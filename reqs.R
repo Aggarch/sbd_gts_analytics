@@ -1,8 +1,9 @@
 
 
 library(tidyverse)
+library(readxl)
 
-setwd("C:/Users/AEG1130/Documents/data")
+setwd("C:/Users/AEG1130/Documents/data/cb")
 
 
 # Exploratory -------------------------------------------------------------
@@ -10,13 +11,13 @@ setwd("C:/Users/AEG1130/Documents/data")
 
 
 # Import >
-reqs_approved<-openxlsx::read.xlsx("reqs_approved_BR.xlsx")
-reqs_bill<-openxlsx::read.xlsx("reqs_bill.xlsx")
-reqs_mike<-openxlsx::read.xlsx("reqs_mike.xlsx")
+reqs_approved<-openxlsx::read.xlsx("../reqs_approved_BR.xlsx")
+reqs_bill<-openxlsx::read.xlsx("../reqs_bill.xlsx")
+reqs_mike<-openxlsx::read.xlsx("../reqs_mike.xlsx")
 
 reqs_all <- reqs_approved %>% 
    bind_rows(reqs_bill) %>% 
-   bind_rows(reqs_mikes) %>% 
+   bind_rows(reqs_mike) %>% 
    as_tibble()
 
 
@@ -32,12 +33,15 @@ wrangler<- function(data){
       separate(business, c("region","segment","sbu"),sep = "([-])") %>% 
       replace_na(list(sbu = 'unknown')) %>% 
       mutate_if(is.character, str_trim) %>% 
-      mutate(br_number = ifelse(is.na(br_number),br_number_2,br_number))
+      mutate(br_number = ifelse(is.na(br_number),br_number_2,br_number)) %>% 
+      janitor::clean_names() 
   
   return(output)
    
    
 } 
+
+
 
 reqs_all  <- wrangler(reqs_all)
 # 267 observation: approved = 106, bill 145, mike 16 == 267 
@@ -178,7 +182,7 @@ cross_testing <- reqs_all %>%
 cases_to_fill <- cross_testing %>% filter(f.test == 0)
 cases_filled <- cross_testing %>% filter(f.test == 1)
 
-completed_data <- reqs_all %>% semi_join(cases_to_fill, by = "br_number")
+pending_data <- reqs_all %>% semi_join(cases_to_fill, by = "br_number")
 
 
 
