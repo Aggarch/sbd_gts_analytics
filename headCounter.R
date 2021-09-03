@@ -3,8 +3,11 @@
 
 library(tidyverse)
 library(lubridate)
-library()
+library(zoo)
 
+
+# Count heads for DA, IoT and TO 
+headCounter <- function(){+ 
 
 hc_path = "S:/North_America/Towson-TOW/FINANCE/WWPTAFIN/COE/SG&A - General Information/Headcount Reports/2021/Corporate Actives List"
 
@@ -37,11 +40,11 @@ read_actuals_hc <- function(files, sheets, period){
     select(name, work_location_name, job_code_description, 
            employee_status, business_unit_desc, gl_cost_center) %>% 
     
-    filter(gl_cost_center %in% c("9401500226","9401500333","9401500230")) %>% 
+    filter(gl_cost_center %in% c("9401500226","9401500233","9401500230")) %>% 
     
     mutate(cost_center = case_when(gl_cost_center == "9401500230"~"TO",
                                    gl_cost_center == "9401500226"~"DA",
-                                   gl_cost_center == "9401500333"~"IoT")) %>% 
+                                   gl_cost_center == "9401500233"~"IoT")) %>% 
     mutate(period = period)
     
   
@@ -74,16 +77,30 @@ return(hc_data)
 
 
 
-consolid_hc <- consolidation(resources)
+consolid_hc <- consolidation(resources) %>% 
+  mutate(date = make_date( year = substr(period,4,7),
+                          month = substr(period,0,2))) %>%  
+  mutate(year_month = as.yearmon(date, "%Y-%m")) %>% 
+  select(-period)
+
+
 
 consolid_hc_grouped <- consolid_hc %>% 
-  group_by(period,cost_center) %>%
+  group_by(year_month,cost_center) %>%
   summarise(n = n(), .groups = "drop") %>% 
   mutate_if(is.character, str_trim) %>% 
-  pivot_wider(names_from = period, values_from = n)
+  pivot_wider(names_from = year_month, values_from = n) %>% 
+  replace(is.na(.), 0)
 
 
 
+return(list(consolid_hc = consolid_hc,
+            consolid_hc_grouped = consolid_hc_grouped))
+
+}
 
 
+setwd("S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting")
 
+
+headCounter() %>% openxlsx::write.xlsx(.,"headcounter.xlsx")
