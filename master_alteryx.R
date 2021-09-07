@@ -622,11 +622,8 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
         mutate(file_name = file) %>% 
         slice(-1) %>% 
         as_tibble() 
-        # select(!contains("actuals_")) %>% 
-        # select(!contains("na_"))
-        # filter(!is.na(team),
-        #       !is.na(growth_initiative))
-         
+        
+       
       
       
       return(data)
@@ -647,7 +644,7 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
     }
     
     
-    ncb_fct_raw_data <- consolidation(forecasts_resources(period, target = "NonCB")) %>% 
+    ncb_fct_raw_data <- consolidation(forecast_resources(period, target = "NonCB")) %>% 
       
       filter(!is.na(spend_category)|
              !is.na(spend_description)|
@@ -656,46 +653,38 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
              !is.na(purchase_order_number)|
              !is.na(erp_system)|
              !is.na(cost_center_global)|
-             !is.na(contact)) 
-      
-      # relocate(.before = team, "sheet_name") %>% 
-      # relocate(.before = team, "file_name") %>% 
-      # mutate(team = ifelse(is.na(team),"NA",team)) %>% 
-      # 
-      # 
-      # 
-      # separate(file_name, c("file_name1","file_name2",
-      #                       "file_name3","file_name4"),sep = "([/])") %>% 
-      # select(-erp_system,-file_name1, -sheet_name,
-      #        -contact, -file_name4, ) %>% 
-      # rename(scenario = file_name2,
-      #        date = file_name3) %>% 
-      # select(-date) %>% 
-      # mutate(account = "NonCB") %>% 
-      # pivot_longer(!c(team, growth_initiative, spend_category,
-      #                 spend_description,cost_center_local,vendor,
-      #                 cost_center_global,forecast_region,scenario,
-      #                 account,purchase_order_number),
-      #              names_to = "month", values_to = "value") %>% 
-      # filter(!grepl("q|fy",month)) %>% 
-      # mutate(month = str_to_title(month)) %>% 
-      # mutate(month_num = match(month, month.name)) %>% 
-      # mutate(quarter = quarter(month_num)) %>% 
-      # mutate(quarter = paste0("Q",quarter)) %>%
-      # mutate(value = as.numeric(value)) %>% 
-      # pivot_wider(names_from = "scenario", 
-      #             values_from = value,
-      #             values_fn = sum) %>% 
-      # mutate(account_l1 = "investment",
-      #        account_l2 = "opex") %>% 
-      # group_by(team,growth_initiative,forecast_region,
-      #          account_l1,account_l2,account,
-      #          month, month_num, quarter) %>% 
-      # summarise(Actuals = sum(Actuals),.groups = "drop")%>% 
-      # arrange(growth_initiative, team,
-      #         account_l1,account_l2)
-    
-    
+             !is.na(contact)) %>% 
+       separate(file_name, c("file_name1","file_name2",
+                             "file_name3","file_name4"),sep = "([/])") %>% 
+       select(-erp_system,-file_name1, -sheet_name,
+              -contact, -file_name4, ) %>% 
+       rename(scenario = file_name2,
+              date = file_name3) %>% 
+       select(-date) %>% 
+      pivot_longer(!c(team, growth_initiative, spend_category,
+                      spend_description,cost_center_local,vendor,
+                      cost_center_global,scenario,
+                      purchase_order_number),
+                   names_to = "month", values_to = "value") %>%
+      filter(!grepl("q|fy",month)) %>% 
+      mutate(month = str_to_title(month)) %>%
+      mutate(month_num = match(month, month.name)) %>%
+      mutate(quarter = quarter(month_num)) %>%
+      mutate(quarter = paste0("Q",quarter)) %>%
+      mutate(account_l1 = "investment",
+             account_l2 = "opex",
+             account = "NonCB") %>% 
+      mutate(value = as.double(value)) %>%
+      replace_na(list(value = 0)) %>% 
+      group_by(team,growth_initiative,
+               account_l1,account_l2,account,
+               month, month_num, quarter) %>%
+      summarise(F03 = sum(value),.groups = "drop") %>%
+      replace_na(list(F03 = 0)) %>%
+      filter(!is.na(growth_initiative)) %>%
+      mutate(team = ifelse(is.na(team),"NA",team))
+
+  
     return(ncb_fct_raw_data)
     
   }                    # ✔✔✔

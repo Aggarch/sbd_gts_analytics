@@ -7,9 +7,12 @@ setwd(bottom_up)
 
 
 # List of resources 
+
+resources <- function(period, account){ 
+  
 data <- list.dirs() %>%
   as_tibble() %>% 
-  filter(grepl(3,value)) %>% 
+  filter(grepl(period,value)) %>% 
   rename(file = value) %>% 
   separate(file, c("main","second","third","fourth"),sep = "([/])") %>% 
   mutate(path = paste0(second,"/", third,"/", fourth)) %>% 
@@ -19,12 +22,17 @@ data <- list.dirs() %>%
   unnest(cols = files) %>% 
   mutate(fullp = paste0(path,"/",files)) %>% 
   mutate(sheets = map(.$fullp, excel_sheets)) %>% 
-  unnest(cols = sheets)
+  unnest(cols = sheets) %>% 
+  filter(grepl("NonCB", sheets))
+
+return(data)
+
+}
 
 
 
 # specific list of resources 
-object = data %>% filter(grepl("F3", fourth)) %>% filter(grepl("NonCB", sheets))
+object = resources('F4', 'NonCB')
 
 
 
