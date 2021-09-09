@@ -119,7 +119,6 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
 
 
 
-
 # ACTUALS         ---------------------------------------------------------
 
 # Actuals resources of specific period ::::
@@ -172,7 +171,6 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
   
 }             # ✔✔✔
 # Actuals Files, inputs;    (p = month.#), target; {CB, NonCB, Capex, Sales/SGM}
-
 
 
 # Non C&B Query R
@@ -601,9 +599,8 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
     return(data_target)
     
   }           # ✔✔✔
-# Actuals Files, inputs;    (p = month.#), target; {CB, NonCB, Capex, Sales/SGM}
+# Actuals Files, inputs;     (p = month.#), target; {CB, NonCB, Capex, Sales/SGM}
 
-  
   
 # Non C&B Query R
   noncb_forecast_data        <- function(period){ 
@@ -687,10 +684,102 @@ bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
   
     return(ncb_fct_raw_data)
     
-  }                    # ✔✔✔
+  }                   # ✔✔✔
 # NonCB Forecast, inputs;    (p = month.#, as.number())
   
   
-  
+# Non C&B Query R
+  cb_forecast_data           <- function(period){ 
+    
+    
+    # Data Wrangling for NonCB
+    read_forecast_cb <- function(file, sheet){ 
+      
+      data <- openxlsx::read.xlsx(file, sheet) 
+      
+      
+      names(data) <- as.character(data[2,])
+      
+      data <- data %>% janitor::clean_names() %>% 
+        mutate(sheet_name = sheet) %>% 
+        mutate(file_name = file) %>% 
+        slice(-2) %>% 
+        as_tibble() %>% 
+        filter(!grepl("Team|Inputs", team))
+      
+      
+      
+      
+      return(data)
+      
+    }
+    
+    
+    
+    #  Iteration 
+    consolidation <-function(data){
+      
+      map2(data$fullp, 
+           data$sheets,
+           read_forecast_ncb) %>% 
+        map_dfr(., bind_rows) 
+      
+      
+    }
+    
+    
+    cb_fct_raw_data <- consolidation(forecast_resources(period, target = "CB")) %>% 
+      filter(!is.na(brassring_job_title)|
+             !is.na(brassring_req_number)|
+             !is.na(employee_name)|
+             !is.na(employee_id)|
+             !is.na(country)|
+             !is.na(budgeted_salary_usd)|
+             !is.na(forecasted_salary_usd)|
+             !is.na(budgeted_start_month)|
+             !is.na(forecasted_start_date)|
+             !is.na(hiring_status)|
+             !is.na(technical_skillset_gained_with_role)|
+             !is.na(employee_level)|
+             !is.na(backfill_name_if_applicable)|
+             !is.na(cost_center_global)|
+             !is.na(hiring_manager)|
+             !is.na(variable_comp_if_applicable)) %>% 
+      separate(file_name, c("file_name1","file_name2",
+                            "file_name3","file_name4"),sep = "([/])") %>% 
+      select(-file_name1, -sheet_name,
+             -file_name4, ) %>% 
+      rename(scenario = file_name2,
+             date = file_name3) %>% 
+      select(-date)
+      # pivot_longer(!c(team, growth_initiative,
+      #                 cost_center_local,vendor,
+      #                 cost_center_global,scenario,
+      #                 purchase_order_number),
+      #              names_to = "month", values_to = "value") %>%
+      # filter(!grepl("q|fy",month)) %>% 
+      # mutate(month = str_to_title(month)) %>%
+      # mutate(month_num = match(month, month.name)) %>%
+      # mutate(quarter = quarter(month_num)) %>%
+      # mutate(quarter = paste0("Q",quarter)) %>%
+      # mutate(account_l1 = "investment",
+      #        account_l2 = "opex",
+      #        account = "NonCB") %>% 
+      # mutate(value = as.double(value)) %>%
+      # replace_na(list(value = 0)) %>% 
+      # group_by(team,growth_initiative,
+      #          account_l1,account_l2,account,
+      #          month, month_num, quarter) %>%
+      # summarise(F03 = sum(value),.groups = "drop") %>%
+      # replace_na(list(F03 = 0)) %>%
+      # filter(!is.na(growth_initiative)) %>%
+      # mutate(team = ifelse(is.na(team),"NA",team))
+    
+    
+    return(cb_fct_raw_data)
+    
+  }                   # ✔✔✔
+# CB Forecast, inputs;       (p = month.#, as.number())
   
 
+  

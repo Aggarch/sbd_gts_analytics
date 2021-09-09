@@ -4,10 +4,11 @@
 library(tidyverse)
 library(lubridate)
 library(zoo)
+library(readxl)
 
 
 # Count heads for DA, IoT and TO 
-headCounter <- function(){+ 
+headCounter <- function(){
 
 hc_path = "S:/North_America/Towson-TOW/FINANCE/WWPTAFIN/COE/SG&A - General Information/Headcount Reports/2021/Corporate Actives List"
 
@@ -103,4 +104,6 @@ return(list(consolid_hc = consolid_hc,
 setwd("S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting")
 
 
-headCounter() %>% openxlsx::write.xlsx(.,"headcounter.xlsx")
+heads = headCounter()
+  
+heads %>% openxlsx::write.xlsx(.,"headcounter.xlsx", overwrite = T)

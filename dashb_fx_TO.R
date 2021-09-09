@@ -38,12 +38,14 @@ rgm_data =  data %>% as_tibble %>%
   mutate(month_num = match(month, month.name)) %>% 
   mutate(quarter = quarter(month_num)) %>% 
   mutate(quarter = paste0("Q",quarter)) %>% 
-  arrange(month_num) %>% select(-month, -quarter) %>% 
-  pivot_wider(names_from = month_num, values_from = value) 
+  arrange(month_num) %>%
+  select(-month_num, -quarter) %>% 
+  pivot_wider(names_from = month, values_from = value) 
 
 return(rgm_data)
 
 }
+
 
 
 result = rgm_query(consolid_act_ncb) %>% 
@@ -51,9 +53,12 @@ result = rgm_query(consolid_act_ncb) %>%
   bind_rows(
   rgm_query(consolid_act_cb)%>%
   mutate(account = "CB")
-            )
+            ) %>% 
+  janitor::adorn_totals()
 
 
 
+result %>% group_by(account) %>%
+           summarise_if(is.numeric, sum, na.rm = TRUE)
 
 

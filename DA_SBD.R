@@ -9,6 +9,12 @@ library(lubridate)
 library(zoo)
 
 
+# datacc.xlsx contains information updated for DA cost center, historical data YTD,
+# raw data without any aditional analysis, new DA Data can be appendiced manually,
+# downloading the KSB1 report from SAP source for the corresponding cost center ID
+
+
+
 getwd()
 setwd("C:/Users/AEG1130/Documents/data")
 
@@ -79,6 +85,8 @@ da_close <- function(){
            actual_may_2021, clearing_account_may_2021,gross_may_2021,
            actual_jun_2021, clearing_account_jun_2021,gross_jun_2021,
            actual_jul_2021, clearing_account_jul_2021,gross_jul_2021
+           # actual_aug_2021, clearing_account_aug_2021,gross_aug_2021
+           
     )
   
   
@@ -110,7 +118,7 @@ da_close <- function(){
   
   
   return(list(raw_cc = ccdata, fixed_assets = clearing,
-              tidy_actuals= actuals, report = report,
+              tidy_actuals = actuals,
               summary = resumen))
   
   
@@ -118,6 +126,47 @@ da_close <- function(){
 
 
 
-da_close() %>% openxlsx::write.xlsx(.,"report_da.xlsx")
+da_close() %>% openxlsx::write.xlsx(.,"report_da.xlsx", overwrite = T)
+
+
+
+
+
+
+
+
+
+
+# DA Wrangling  -----------------------------------------------------------
+
+DA  = "S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting"
+setwd(DA)
+
+
+jul.da <- openxlsx::read.xlsx("07 Jul_DA_Close.xlsx") %>% as_tibble() %>%
+  janitor::clean_names()
+
+jul.da %>% 
+  # mutate(period = month.abb[as.numeric(period)]) %>% 
+  group_by(cost_center, period) %>% 
+  summarise(value = sum(val_in_rep_cur),.groups = "drop") %>%
+  pivot_wider(names_from = period, values_from = value) %>% 
+  mutate_if(is.integer, as.numeric) %>% 
+  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) 
+
+
+
+jul.da %>% 
+  # mutate(period = month.abb[as.numeric(period)]) %>% 
+  group_by(cost_center, period) %>% 
+  summarise(n = n(),.groups = "drop") %>%
+  pivot_wider(names_from = period, values_from = n) %>% 
+  mutate_if(is.integer, as.numeric) %>% 
+  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
+
+
+
+
+
 
 

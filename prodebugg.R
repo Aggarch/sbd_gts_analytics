@@ -23,7 +23,7 @@ data <- list.dirs() %>%
   mutate(fullp = paste0(path,"/",files)) %>% 
   mutate(sheets = map(.$fullp, excel_sheets)) %>% 
   unnest(cols = sheets) %>% 
-  filter(grepl("NonCB", sheets))
+  filter(grepl(account, sheets))
 
 return(data)
 
@@ -32,22 +32,22 @@ return(data)
 
 
 # specific list of resources 
-object = resources('F4', 'NonCB')
+object = resources('F3', ' CB')
 
 
 
 # wrangler function original 
-read_forecast_ncb <- function(file, sheet){ 
+read_data <- function(file, sheet){ 
   
   data <- openxlsx::read.xlsx(file, sheet) 
   
   
-  names(data) <- as.character(data[1,])
+  names(data) <- as.character(data[2,])
   
   data <- data %>% janitor::clean_names() %>% 
     mutate(sheet_name = sheet) %>% 
     mutate(file_name = file) %>% 
-    slice(-1) %>% 
+    slice(-2) %>% 
     as_tibble() %>% 
   select(!contains("actuals_")) %>% 
   select(!contains("na_"))
@@ -62,7 +62,7 @@ read_forecast_ncb <- function(file, sheet){
 
 
 # detail seeker addition to wrangler 
-colnames_reader = function (file, sheet){read_forecast_ncb(file, sheet) %>% colnames()}
+colnames_reader = function (file, sheet){read_data(file, sheet) %>% colnames()}
 
 
 
