@@ -166,7 +166,23 @@ jul.da %>%
 
 
 
+setwd("C:/Users/AEG1130/Documents/data")
 
+hoppe = openxlsx::read.xlsx("hoppe.xlsx") %>% as_tibble 
 
+consol_da = hoppe %>% 
+  group_by(Spend.Categories,Vendors, time_frame) %>% 
+  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
+  mutate(Spend.Categories = ifelse(str_detect(Spend.Categories,"PSD"),
+                                   "Product Service Investment",Spend.Categories)) %>% 
+  mutate(Spend.Categories = str_trim(Spend.Categories)) %>% 
+  pivot_wider(names_from = time_frame,
+              values_from = c(Actual, F07,VF07, OP, VOP),
+              values_fn = sum) %>% 
+  select(Spend.Categories, Vendors, contains("QTD"), contains("YTD")) %>% 
+  ungroup() %>%
+  arrange(desc(Actual_QTD))
+
+consol_da %>% openxlsx::write.xlsx(.,"../hoppe_consol.xlsx")
 
 
