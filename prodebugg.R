@@ -32,7 +32,7 @@ return(data)
 
 
 # specific list of resources 
-object = resources('F3', ' CB')
+object = resources('F7', 'Capex')
 
 
 
@@ -42,12 +42,12 @@ read_data <- function(file, sheet){
   data <- openxlsx::read.xlsx(file, sheet) 
   
   
-  names(data) <- as.character(data[2,])
+  names(data) <- as.character(data[1,])
   
   data <- data %>% janitor::clean_names() %>% 
     mutate(sheet_name = sheet) %>% 
     mutate(file_name = file) %>% 
-    slice(-2) %>% 
+    slice(-1) %>% 
     as_tibble() %>% 
   select(!contains("actuals_")) %>% 
   select(!contains("na_"))
