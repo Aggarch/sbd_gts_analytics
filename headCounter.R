@@ -119,3 +119,40 @@ all = heads$consolid_hc %>% filter(date != "2021-08-01")
 aug = heads$consolid_hc %>% filter(date == "2021-08-01")
 
 aug %>% anti_join(all, by="name")
+
+
+
+
+# # HeadCount Report  -----------------------------------------------------
+
+
+consolidations <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Consolidations" 
+
+setwd(consolidations)
+
+
+
+actuals_hc = openxlsx::read.xlsx("Consolidated Actuals.xlsx", "CB") %>% as_tibble %>% 
+  select(!starts_with("F")) %>% 
+  select(!contains("Q")) %>% 
+  mutate(Hiring.Status = str_trim(Hiring.Status)) %>% 
+  mutate(Hiring.Status = str_to_lower(Hiring.Status)) %>% 
+  filter(Hiring.Status %in% c("started - internal transfer", "started - external")) %>% 
+  mutate(CC = NA, LOCAL_CC = NA, Reg_Region = NA, Platform = NA, Location_Country = NA,
+         Labor_Type = 0, HFM_CO = NA, 'Month of Month Year'= NA,
+         Division = "Global Tools & Storage", Employee_Overlap = NA ) %>% 
+  select(Employee.ID, Employee.Name, Growth.Initiative,CC, LOCAL_CC, 
+         Reg_Region, Division, Platform, Location_Country, Labor_Type,
+         Team, HFM_CO, 'Month of Month Year', Employee_Overlap) 
+
+
+
+setwd("C:/Users/AEG1130/Documents")
+
+openxlsx::write.xlsx(actuals_hc,"Headcount Analysis Growth Confirmation.xlsx", asTable = F, overwrite = T)
+
+
+
+
+
+

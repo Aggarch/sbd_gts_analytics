@@ -166,6 +166,8 @@ jul.da %>%
 
 
 
+hoppe_consolidation <- function(){ 
+
 setwd("C:/Users/AEG1130/Documents/data")
 
 hoppe = openxlsx::read.xlsx("hoppe.xlsx") %>% as_tibble 
@@ -183,7 +185,25 @@ consol_da = hoppe %>%
   ungroup() %>%
   arrange(desc(Actual_QTD))
 
-consol_da %>% openxlsx::write.xlsx(.,"../hoppe_consol.xlsx")
+grouped_leader <- hoppe %>% 
+  group_by(Account, time_frame) %>% 
+  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
+  pivot_wider(names_from = time_frame,
+              values_from = c("Actual", "F07", "VF07", "OP", "VOP")) %>% 
+  select(Account,contains("QTD"), everything()) %>% 
+  janitor::adorn_totals()
+
+
+return(list(details = consol_da ,
+            by_leader = grouped_leader
+       ))
+
+
+}
+
+
+hoppe_consolidation %>%
+  openxlsx::write.xlsx(.,"../hoppe_consol.xlsx", overwrite = T)
 
 
 
