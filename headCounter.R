@@ -82,8 +82,9 @@ consolid_hc <- consolidation(resources) %>%
   mutate(date = make_date( year = substr(period,4,7),
                           month = substr(period,0,2))) %>%  
   mutate(year_month = as.yearmon(date, "%Y-%m")) %>% 
-  select(-period)
-
+  select(-period) %>% 
+  mutate(quarter = quarter(date)) %>%
+  mutate(quarter = paste0("Q",quarter))
 
 
 consolid_hc_grouped <- consolid_hc %>% 
@@ -91,8 +92,7 @@ consolid_hc_grouped <- consolid_hc %>%
   summarise(n = n(), .groups = "drop") %>% 
   mutate_if(is.character, str_trim) %>% 
   pivot_wider(names_from = year_month, values_from = n) %>% 
-  replace(is.na(.), 0)
-
+  replace(is.na(.), 0) 
 
 
 return(list(consolid_hc = consolid_hc,
@@ -101,9 +101,21 @@ return(list(consolid_hc = consolid_hc,
 }
 
 
+heads = headCounter()
+
+
 setwd("S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting")
 
 
-heads = headCounter()
-  
-heads %>% openxlsx::write.xlsx(.,"headcounter.xlsx", overwrite = T)
+
+heads %>% 
+openxlsx::write.xlsx(.,"headcounter.xlsx", overwrite = T)
+
+
+
+# New Heads >>>
+
+all = heads$consolid_hc %>% filter(date != "2021-08-01")
+aug = heads$consolid_hc %>% filter(date == "2021-08-01")
+
+aug %>% anti_join(all, by="name")

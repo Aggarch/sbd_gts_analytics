@@ -923,7 +923,92 @@ capex_forecast_data        <- function(period){
 
 
 # Sales/SGM Query 
-sales_sgm_forecast_data    <- function(period){}
+sales_sgm_forecast_data    <- function(period){
+  
+  
+  # Data Wrangling for NonCB
+  read_forecast_ssgm <- function(file, sheet){ 
+    
+    data <- openxlsx::read.xlsx(file, sheet) 
+    
+    
+    names(data) <- as.character(data[1,])
+    
+    data <- data %>% janitor::clean_names() %>% 
+      mutate(sheet_name = sheet) %>% 
+      mutate(file_name = file) %>% 
+      slice(-1) %>% 
+      as_tibble() 
+    
+    
+    
+    
+    return(data)
+    
+  }
+  
+  
+  
+  #  Iteration 
+  consolidation <-function(data){
+    
+    map2(data$fullp, 
+         data$sheets,
+         read_forecast_ssgm) %>% 
+      map_dfr(., bind_rows) 
+    
+    
+  }
+  
+  
+  
+  ssgm_fct_raw_data <- consolidation(forecast_resources(period, target = "SalesSGM")) %>% 
+  filter(account != "SGM %",
+         !is.na(account),
+         !is.na(growth_initiative),
+         account %in% c("SGM","Sales"),
+         !grepl("Init",growth_initiative)) %>%
+    
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    group_by(region, growth_initiative) %>% 
+    slice(1:2) %>% 
+    ungroup() %>% 
+    select(!starts_with("x")) %>%
+    select(!starts_with("q")) %>%
+    select(!starts_with("fy"))%>% 
+    select(-sheet_name, -file_name) %>%
+    rename(team = region) %>% 
+    pivot_longer(!c(team, growth_initiative,account),
+                 names_to = "month", values_to = "value") %>% 
+    mutate(month = str_to_title(month)) %>% 
+    mutate(year = year(today())) %>% 
+    mutate(month_num = match(month, month.name)) %>% 
+    mutate(date = make_date(year = year, month = month_num, day= 1L)) %>% 
+    mutate(quarter = quarter(date)) %>% 
+    mutate(quarter = paste0("Q",quarter)) %>%
+    
+    relocate(.before = month, value) %>% 
+    rename(forecast = value) %>% 
+    mutate(account_l1 = account,
+           account_l2 = account) %>% 
+    arrange(growth_initiative, team,
+            account_l1,account_l2,account,
+            month_num,forecast) %>% 
+    mutate(forecast = as.double(forecast)) %>% 
+    group_by(team, growth_initiative,
+             account, account_l1, account_l2,
+             month, month_num, quarter) %>% 
+    summarise(forecast = sum(forecast), 
+              .groups = "drop") %>% 
+    arrange(growth_initiative, team, 
+            account_l2, account_l1, account,
+            month_num, forecast)
+  
+  
+  
+}                    # ✔✔✔
+# SSGM Forecast, inputs;       (p = month.#, as.number())
+
 
 
 

@@ -186,3 +186,5 @@ consol_da = hoppe %>%
 consol_da %>% openxlsx::write.xlsx(.,"../hoppe_consol.xlsx")
 
 
+
+# https://gt.rstudio.com/articles/case-study-gtcars.html

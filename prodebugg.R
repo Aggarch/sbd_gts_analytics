@@ -32,7 +32,7 @@ return(data)
 
 
 # specific list of resources 
-object = resources('F7', 'Capex')
+object = resources('3', '_CB')
 
 
 
@@ -42,18 +42,13 @@ read_data <- function(file, sheet){
   data <- openxlsx::read.xlsx(file, sheet) 
   
   
-  names(data) <- as.character(data[1,])
+  names(data) <- as.character(data[2,])
   
   data <- data %>% janitor::clean_names() %>% 
     mutate(sheet_name = sheet) %>% 
     mutate(file_name = file) %>% 
-    slice(-1) %>% 
-    as_tibble() %>% 
-  select(!contains("actuals_")) %>% 
-  select(!contains("na_"))
-  # filter(!is.na(team),
-  #       !is.na(growth_initiative))
-  
+    slice(-2) %>% 
+    as_tibble() 
   
   
   return(data)
@@ -72,7 +67,9 @@ datata = object %>%
   unnest(cols = c(struct)) %>% 
   group_by(fullp,files, sheets) %>% 
   summarise(struct = str_flatten(struct, 
-                                 collapse = ","), .groups = "drop")
+                                 collapse = ","), .groups = "drop") %>% 
+  ungroup() %>% 
+  filter(!grepl("Drop",sheets))
 
 
 
