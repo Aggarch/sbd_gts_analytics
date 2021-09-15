@@ -1,18 +1,21 @@
 
+
 library(tidyverse)
 library(lubridate)
 library(zoo)
 
-#  Location
-bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
 
-setwd(bottom_up) 
+
+#  Location
+bottom_up  <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
 
 
 
 # Actuals Update Function
 actuals_update <- function(){ 
   
+  setwd(bottom_up) 
+
   data <- list.dirs() %>%
     as_tibble() %>% 
     filter(grepl("Actuals",value)) %>% 
