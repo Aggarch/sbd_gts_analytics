@@ -156,3 +156,27 @@ openxlsx::write.xlsx(actuals_hc,"Headcount Analysis Growth Confirmation.xlsx", a
 
 
 
+
+# copy-paste-files --------------------------------------------------------
+
+
+
+# example
+
+
+setwd("C:/Users/AEG1130/Documents")
+
+list.files()
+
+# file.copy(from=currentfiles, to=newlocation, 
+#           overwrite = TRUE, recursive = FALSE, 
+#           copy.mode = TRUE)
+
+
+# create directory 'empty' 
+dir.create("Asia/Actuals/10-2021")
+
+#  copy and paste file 
+file.copy(from = "Asia/Actuals/09-2021/Asia_Act_Capex_0921.xlsx", "Asia/Actuals/10-2021/Asia_Act_Capex_1021.xlsx")
+
+

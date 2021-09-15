@@ -1,4 +1,8 @@
 
+library(tidyverse)
+library(lubridate)
+library(zoo)
+
 
 #  Location
 bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
@@ -76,6 +80,7 @@ datata = object %>%
 # diagnostics 
 dataproblem = datata %>% mutate(test = str_detect(struct, "team"))
 dataproblem = datata %>% filter(!grepl("team", struct))
+
 
 
 
