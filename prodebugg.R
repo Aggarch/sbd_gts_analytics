@@ -92,7 +92,7 @@ datata = object %>%
   summarise(struct = str_flatten(struct, 
                                  collapse = ","), .groups = "drop") %>% 
   ungroup() %>% 
-  filter(!grepl("Drop",sheets))
+  filter(!grepl("Drop",sheets))   
 
 
 
