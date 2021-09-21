@@ -5,6 +5,7 @@ library(lubridate)
 library(zoo)
 
 
+# Script to duplicate files located in each folder team 
 
 #  Location
 bottom_up  <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 

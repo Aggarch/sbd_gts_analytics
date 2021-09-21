@@ -7,10 +7,16 @@ library(zoo)
 library(readxl)
 
 
+# Parths ------------------------------------------------------------------
+
+hc_path        <- "S:/North_America/Towson-TOW/FINANCE/WWPTAFIN/COE/SG&A - General Information/Headcount Reports/2021/Corporate Actives List"
+consolidations <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Consolidations" 
+DA             <- "S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting"
+TO             <- "S:/North_America/Baltimore-BLT/Transformation Office/Admn/TO Reporting"
+myDocs         <- "C:/Users/AEG1130/Documents"
+
 # Count heads for DA, IoT and TO 
 headCounter <- function(){
-
-hc_path = "S:/North_America/Towson-TOW/FINANCE/WWPTAFIN/COE/SG&A - General Information/Headcount Reports/2021/Corporate Actives List"
 
 setwd(hc_path)
 
@@ -104,7 +110,7 @@ return(list(consolid_hc = consolid_hc,
 heads = headCounter()
 
 
-setwd("S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting")
+setwd(DA)
 
 
 
@@ -126,8 +132,6 @@ aug %>% anti_join(all, by="name")
 # # HeadCount Report  -----------------------------------------------------
 
 
-consolidations <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Consolidations" 
-
 setwd(consolidations)
 
 
@@ -147,7 +151,7 @@ actuals_hc = openxlsx::read.xlsx("Consolidated Actuals.xlsx", "CB") %>% as_tibbl
 
 
 
-setwd("C:/Users/AEG1130/Documents")
+setwd(myDocs)
 
 openxlsx::write.xlsx(actuals_hc,"Headcount Analysis Growth Confirmation.xlsx", asTable = F, overwrite = T)
 
@@ -157,26 +161,146 @@ openxlsx::write.xlsx(actuals_hc,"Headcount Analysis Growth Confirmation.xlsx", a
 
 
 
-# copy-paste-files --------------------------------------------------------
+# ConstrasteR HeadCounting ------------------------------------------------
+
+setwd(TO)
+
+
+# Actuals -----------------------------------------------------------------
+
+actuals_aug = openxlsx::read.xlsx("Trans Off_August.xlsx") 
+
+# Transformation
+actuals_august = actuals_aug %>% 
+  janitor::clean_names() %>% 
+  as_tibble() %>% 
+  filter(cost_element != "9585000") %>% 
+  mutate(category =case_when(str_detect(cost_element_name,"EMP BEN")~"C&B",
+                             str_detect(cost_element_name,"PR TAXE")~"C&B",
+                             str_detect(cost_element_name,"WAGE")~"C&B",
+                             str_detect(cost_element_name,"DEMO")~"Demo Tools",
+                             str_detect(cost_element_name,"OS FEE LABOR")~"Globant Profesional Fees",
+                             str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
+                             str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
+                             str_detect(cost_element_name,"RENT BUILD")~"Rent",
+                             str_detect(cost_element_name,"AMORTIZ SOFTW")~"Software Amortization",
+                             str_detect(cost_element_name,"MATL PROTO")~"Supplies & Other",
+                             str_detect(cost_element_name,"OS FEE LEGAL GEN")~"Supplies & Other",
+                             str_detect(cost_element_name,"OTH EXP MISC")~"Supplies & Other",
+                             str_detect(cost_element_name,"SUPPLIES")~"Supplies & Other",
+                             str_detect(cost_element_name,"T&E")~"T&E",
+                             str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
+                             str_detect(cost_element_name,"EMP DEV SHOW EXHIBIT")~"Supplies & Other",
+                             str_detect(document_header_text,"BU funded")~"Corporate IT",
+                             TRUE ~ as.character(cost_element_name)))
+
+# Pivot 
+actuals_august %>%
+  group_by(category,cost_element_name) %>%
+  summarise(amount = sum(val_in_rep_cur),
+            .groups = "drop") %>%
+  janitor::adorn_totals()
+  
+
+
+# Comp & Benefits 
+aug_cb = actuals_august %>% filter(category == "C&B") 
+
+sum(aug_cb$val_in_rep_cur)
+
+
+# August Diff Actuals vs 
+diff_aug = sum(aug_cb$val_in_rep_cur)-sum(forecasts_august$august)
+
+diff_aug/174729.46 
 
 
 
-# example
+# Forecasted  -------------------------------------------------------------
+
+setwd(TO)
+
+forecasts_aug = openxlsx::read.xlsx("TO_2021_F07.xlsx") 
 
 
-setwd("C:/Users/AEG1130/Documents")
-
-list.files()
-
-# file.copy(from=currentfiles, to=newlocation, 
-#           overwrite = TRUE, recursive = FALSE, 
-#           copy.mode = TRUE)
+forecasts_august = forecasts_aug %>% 
+  janitor::clean_names() %>% 
+  as_tibble()
 
 
-# create directory 'empty' 
-dir.create("Asia/Actuals/10-2021")
 
-#  copy and paste file 
-file.copy(from = "Asia/Actuals/09-2021/Asia_Act_Capex_0921.xlsx", "Asia/Actuals/10-2021/Asia_Act_Capex_1021.xlsx")
+forecast_resumen = forecasts_august %>% 
+  select(employee_name, employee_id)%>%
+  separate(employee_name, c("first", "last"), sep = " ")
+
+# US Headcount  -----------------------------------------------------------
+
+setwd(hc_path)
+
+hc_aug = openxlsx::read.xlsx("US Headcount 08-2021.xlsx", "Actives")
+
+names(hc_aug) <- as.character(hc_aug[1,])
+
+hc_august <- hc_aug %>% 
+  janitor::clean_names() %>% 
+  slice(-1) %>% 
+  as_tibble() %>% 
+  filter(gl_cost_center == "9401500230")
+  
+
+hc_resumen = hc_august %>% select(name, hr_empl_id)
+  
+hc_split = hc_resumen %>%
+  separate(name, c("last", "first"),sep = ",") %>%
+  separate(first, c("first", "second"), sep = " ") %>% 
+  select(-second)
+  # unite(name, last, first, sep = " ") %>% 
+  # mutate()
+  
+
+
+# Intersect ---------------------------------------------------------------
+
+
+hc_split
+forecast_resumen
+
+
+# In Forecast not in US HeadCount 
+missing_names_hc = forecast_resumen %>% 
+  select(last)   %>%
+  anti_join(hc_split %>% select(last), by = "last") %>% 
+  na.omit()
+
+
+# In US HeadCount not in Forecast 
+missing_names_fcst = hc_split %>% 
+  # select(last)   %>%
+  anti_join(forecast_resumen %>% select(last), by = "last") %>% 
+  na.omit()
+
+
+
+# Details of Missings -----------------------------------------------------
+
+forecasts_august %>%
+  separate(employee_name, c("first","last"),sep = " ") %>%
+  filter(last %in% missing_names_hc$last)->a
+
+
+setwd(myDocs)
+
+payrolls = openxlsx::read.xlsx("ADP_report_TO_aug.xlsx") %>% 
+  as_tibble() %>%
+  janitor::clean_names() %>% 
+  mutate(ee_number = as.character(ee_number))
+  
+
+
+payments = missing_names_fcst %>% 
+  left_join(payrolls, by=c("hr_empl_id" = "ee_number")) %>% 
+  arrange(desc(earnings))
+
+sum(payments$earnings)
 
 
