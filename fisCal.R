@@ -16,4 +16,4 @@ setwd("~/projects/sbd_gts_analytics")
 
 saveRDS(fisCal, "fisCal.Rds")
 
-readRDS("fisCal.Rds")
+fisCal = readRDS("fisCal.Rds")

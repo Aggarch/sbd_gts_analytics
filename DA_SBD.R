@@ -13,17 +13,23 @@ library(zoo)
 # raw data without any aditional analysis, new DA Data can be appendiced manually,
 # downloading the KSB1 report from SAP source for the corresponding cost center ID
 
+# C:/Users/AEG1130/Documents/data/datacc.xlsx contains the historical data from 
+# (DA CC), Appendized data coming from last fiscal close SAPc11-KSB1, report. 
 
 
+
+
+# Data Integration ::: 
 getwd()
 setwd("C:/Users/AEG1130/Documents/data")
 
 
-da_close <- function(){
+# ACTUALS 
+da_close_actuals <- function(){
   
   # cost_centers_data.  
-  ccdata <- openxlsx::read.xlsx("datacc.xlsx") %>% as_tibble() %>%
-    janitor::clean_names()
+  ccdata <- openxlsx::read.xlsx("datacc.xlsx", "hist_raw") %>% 
+    as_tibble() %>%  janitor::clean_names()
   
   
   # fix_assets
@@ -37,6 +43,8 @@ da_close <- function(){
   # tidy_actuals.
   actuals <- ccdata %>%
     filter(!cost_element %in% c("1817400","1919350","5672215")) %>%
+    mutate(cost_element_name = ifelse(cost_element_name == "UTILITY TELEPHONE" & val_in_rep_cur > 5000,
+                                      name_of_offsetting_account, cost_element_name)) %>% 
     group_by(cost_element, cost_element_name, period) %>%
     summarise(val_in_rep_cur = sum(val_in_rep_cur), .groups = "drop") %>%
     left_join(clearing, by = c("cost_element", "cost_element_name", "period")) %>%
@@ -53,44 +61,25 @@ da_close <- function(){
                                str_detect(cost_element_name,"PR TAXE")~"C&B",
                                str_detect(cost_element_name,"WAGE")~"C&B",
                                str_detect(cost_element_name,"DEMO")~"Demo Tools",
-                               str_detect(cost_element_name,"OS FEE LABOR")~"Globant Profesional Fees",
+                               str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant",
                                str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
                                str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
                                str_detect(cost_element_name,"RENT BUILD")~"Rent",
                                str_detect(cost_element_name,"AMORTIZ SOFTW")~"Software Amortization",
-                               str_detect(cost_element_name,"MATL PROTO")~"Supplies & Other",
-                               str_detect(cost_element_name,"OS FEE LEGAL GEN")~"Supplies & Other",
-                               str_detect(cost_element_name,"OTH EXP MISC")~"Supplies & Other",
-                               str_detect(cost_element_name,"SUPPLIES")~"Supplies & Other",
+                               str_detect(cost_element_name,"MATL PROTO")~"Supplies",
+                               str_detect(cost_element_name,"OS FEE LEGAL GEN")~"Supplies",
+                               str_detect(cost_element_name,"OTH EXP MISC")~"Supplies",
+                               str_detect(cost_element_name,"SUPPLIES")~"Supplies",
                                str_detect(cost_element_name,"T&E")~"T&E",
                                str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
-                               str_detect(cost_element_name,"EMP DEV SHOW EXHIBIT")~"Supplies & Other",
-                               TRUE ~ as.character(cost_element_name))) %>%
+                               str_detect(cost_element_name,"EMP DEV SHOW EXHIBIT")~"Supplies",
+                               str_detect(cost_element_name,"HAMILTON MANU")~"Gyro Development - Didio",
+                               TRUE ~ as.character("Others"))) %>%
     relocate(.before = cost_element, category )%>%
     replace(.,is.na(.),0)
   
   
-  
-  # wider table with actuals.
-  report <- actuals %>%  
-    pivot_wider(names_from = period, values_from = c(actual,
-                                                     clearing_account,
-                                                     gross)) %>%
-    janitor::clean_names() %>%
-    select(category,cost_element,cost_element_name,
-           actual_jan_2021, clearing_account_jan_2021,gross_jan_2021,
-           actual_feb_2021, clearing_account_feb_2021,gross_feb_2021,
-           actual_mar_2021, clearing_account_mar_2021,gross_mar_2021,
-           actual_apr_2021, clearing_account_apr_2021,gross_apr_2021,
-           actual_may_2021, clearing_account_may_2021,gross_may_2021,
-           actual_jun_2021, clearing_account_jun_2021,gross_jun_2021,
-           actual_jul_2021, clearing_account_jul_2021,gross_jul_2021
-           # actual_aug_2021, clearing_account_aug_2021,gross_aug_2021
-           
-    )
-  
-  
-  
+
   # summarized actuals by category.
   resumen_actuals <-  actuals %>%
     group_by(category, period) %>%
@@ -105,28 +94,128 @@ da_close <- function(){
   # summarized capitalization.
   resumen_capitalized <-  actuals %>%
     group_by(category, period) %>%
+    mutate(category = "Capitalized") %>% 
     summarise(clearing_account = sum(clearing_account),.groups="drop") %>%
     pivot_wider(names_from = period, values_from = clearing_account) %>%
     replace(.,is.na(.),0) %>%
     # janitor::adorn_totals() %>%
-    mutate(type = "adjustement") %>%
+    mutate(type = "adjustment") %>%
     relocate(.before = category, type)
   
   
-  resumen <- resumen_actuals %>% bind_rows(resumen_capitalized) %>%
-    janitor::adorn_totals()
+  resumen <- resumen_actuals %>% bind_rows(resumen_capitalized) 
+  
+  overview <- resumen %>% mutate(category = ifelse(type == "adjustment",
+                                                   "Capitalized",category)) %>% 
+    select(-type)
+    
   
   
   return(list(raw_cc = ccdata, fixed_assets = clearing,
               tidy_actuals = actuals,
-              summary = resumen))
+              summary = overview))
+  
+  
+}
+
+# OPlan
+da_op_plan  <- function(){ 
+  
+# detailed
+  
+op_plan_21 <- openxlsx::read.xlsx("datacc.xlsx", "OP") %>% 
+  as_tibble() %>%  janitor::clean_names() %>% 
+  mutate(period = as.Date(period, 
+                          origin = "1899-12-30")) %>% 
+  mutate(period = as.yearmon(period)) %>% 
+  mutate(quarter = quarter(period)) %>% 
+  mutate(quarter = paste0("Q",quarter))
+  
+
+# monthly
+monthly <- op_plan_21 %>% 
+  select(-quarter) %>% 
+  pivot_wider(names_from = period, values_from = value)
+
+
+# quarterly 
+quarterly <- op_plan_21 %>% 
+  select(-period) %>% 
+  pivot_wider(names_from = quarter,
+              values_from = value,
+              values_fn = sum) %>% 
+  mutate(full_year = rowSums(select(., -category)))
+
+
+overview = monthly %>% left_join(quarterly, by = "category")
+
+
+return(list(
+       detailed = op_plan_21,
+       monthly = monthly,
+       quarterly = quarterly,
+       overview = overview))
+
+
+}
+
+# Forecast
+da_forecast <- function(){ 
+  
+  # detailed
+  
+  forecast_21 <- openxlsx::read.xlsx("datacc.xlsx", "F7") %>% 
+    as_tibble() %>%  janitor::clean_names() %>% 
+    mutate(period = as.Date(period, 
+                            origin = "1899-12-30")) %>% 
+    mutate(period = as.yearmon(period)) %>% 
+    mutate(quarter = quarter(period)) %>% 
+    mutate(quarter = paste0("Q",quarter))
+  
+  
+  # monthly
+  monthly <- forecast_21 %>% 
+    select(-quarter) %>% 
+    pivot_wider(names_from = period, values_from = value)
+  
+  
+  # quarterly 
+  quarterly <- forecast_21 %>% 
+    select(-period) %>% 
+    pivot_wider(names_from = quarter,
+                values_from = value,
+                values_fn = sum) %>% 
+    mutate(full_year = rowSums(select(., -category)))
+  
+  
+  
+  overview = monthly %>% left_join(quarterly, by = "category") 
+
+  
+  return(list(
+    detailed = op_plan_21,
+    monthly = monthly,
+    quarterly = quarterly,
+    overview = overview))
   
   
 }
 
 
 
-da_close() %>% openxlsx::write.xlsx(.,"report_da.xlsx", overwrite = T)
+
+
+
+
+act = da_close_actuals()$summary
+
+op = da_op_plan()$overview
+
+fcast = da_forecast()$overview
+
+
+
+
 
 
 
@@ -141,7 +230,6 @@ da_close() %>% openxlsx::write.xlsx(.,"report_da.xlsx", overwrite = T)
 
 DA  = "S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting"
 setwd(DA)
-
 
 jul.da <- openxlsx::read.xlsx("07 Jul_DA_Close.xlsx") %>% as_tibble() %>%
   janitor::clean_names()
