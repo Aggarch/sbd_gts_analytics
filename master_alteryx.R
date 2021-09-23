@@ -588,7 +588,7 @@ forecast_resources         <- function(period, target){
   
   data <- list.dirs() %>%
     as_tibble() %>% 
-    filter(grepl(period,value)) %>% 
+    filter(grepl(9,value)) %>% 
     rename(file = value) %>% 
     separate(file, c("main","second","third","fourth"),sep = "([/])") %>% 
     mutate(path = paste0(second,"/", third,"/", fourth)) %>% 

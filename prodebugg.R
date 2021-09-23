@@ -4,6 +4,13 @@ library(lubridate)
 library(zoo)
 
 
+# This Script allow the debbugging of heterogenous data structures across the same
+# observational unit, the most common errors in homogenization are related to hidden
+# values at the top of each document, most of the times thos values are valueless 
+# the exception are the dates related to fisCal used at CB docs to calculate values 
+
+
+
 #  Location
 bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
 setwd(bottom_up) 
@@ -57,8 +64,21 @@ read_data <- function(file, sheet){
   data <- data %>% janitor::clean_names() %>% 
     mutate(sheet_name = sheet) %>% 
     mutate(file_name = file) %>% 
-    slice(-2) %>% 
-    as_tibble() 
+    slice(-1) %>% 
+    as_tibble() %>% 
+    select(!contains("q")) %>% 
+    select(!contains("fy")) %>% 
+    select(!contains("na")) %>% 
+    select(!contains("forecast_region"))
+  
+  
+  
+  
+    # select(team, growth_initiative, spend_category, spend_description, 
+    #        october, november, december, q4) %>% 
+    # filter(!is.na(growth_initiative)) %>% 
+    # mutate_at(c("october", "november", "december","q4"), as.numeric)  
+    # 
   
   
   return(data)
@@ -78,8 +98,8 @@ read_data <- function(file, sheet){
 
 
 # detail seeker addition to wrangler 
-colnames_reader = function (file, sheet){read_data(file, sheet)
-    #colnames()
+colnames_reader = function (file, sheet){read_data(file, sheet) %>% 
+    colnames()
   }
 
 
