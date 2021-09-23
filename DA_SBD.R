@@ -19,13 +19,24 @@ library(zoo)
 
 
 
-# Data Integration ::: 
+# Data Integration ::: Directly Sourced. 
 getwd()
 setwd("C:/Users/AEG1130/Documents/data")
 
 
+
+
+# DA Analysis  ------------------------------------------------------------
+
+
+
+# Returns the overview for actuals, OP and forecast.
+# detailed process embeed into each function. 
+# where tw = time window. 
+lifeblood <- function(tw){ 
+
 # ACTUALS 
-da_close_actuals <- function(){
+da_close_actuals <- function(tw){
   
   # cost_centers_data.  
   ccdata <- openxlsx::read.xlsx("datacc.xlsx", "hist_raw") %>% 
@@ -77,81 +88,110 @@ da_close_actuals <- function(){
                                TRUE ~ as.character("Others"))) %>%
     relocate(.before = cost_element, category )%>%
     replace(.,is.na(.),0)
-  
+
   
 
   # summarized actuals by category.
   resumen_actuals <-  actuals %>%
     group_by(category, period) %>%
-    summarise(gross = sum(gross),.groups="drop") %>%
-    pivot_wider(names_from = period, values_from = gross) %>%
-    replace(.,is.na(.),0) %>%
-    # janitor::adorn_totals() %>%
-    mutate(type = "gross") %>%
-    relocate(.before = category, type)
+    summarise(gross = sum(gross),.groups="drop") %>% 
+    rename(value = gross)
+    
   
   
   # summarized capitalization.
   resumen_capitalized <-  actuals %>%
     group_by(category, period) %>%
     mutate(category = "Capitalized") %>% 
-    summarise(clearing_account = sum(clearing_account),.groups="drop") %>%
-    pivot_wider(names_from = period, values_from = clearing_account) %>%
-    replace(.,is.na(.),0) %>%
-    # janitor::adorn_totals() %>%
-    mutate(type = "adjustment") %>%
-    relocate(.before = category, type)
+    summarise(clearing_account = sum(clearing_account),.groups="drop") %>% 
+    rename(value = clearing_account)
+  
+    # pivot_wider(names_from = period, values_from = clearing_account) %>%
+    # replace(.,is.na(.),0) %>%
+    # # janitor::adorn_totals() %>%
+    # mutate(type = "adjustment") %>%
+    # relocate(.before = category, type)
   
   
-  resumen <- resumen_actuals %>% bind_rows(resumen_capitalized) 
+  detailed <- resumen_actuals %>% 
+    bind_rows(resumen_capitalized) %>% 
+    mutate(period = as.Date(period, 
+                            origin = "1899-12-30")) %>% 
+    mutate(period = as.yearmon(period)) %>% 
+    mutate(quarter = quarter(period)) %>% 
+    mutate(quarter = paste0("Q",quarter)) %>% 
+    mutate(type = "actuals") %>% 
+    filter(period <= tw )
   
-  overview <- resumen %>% mutate(category = ifelse(type == "adjustment",
-                                                   "Capitalized",category)) %>% 
-    select(-type)
+  
+  monthly <- detailed %>%
+     select(-quarter) %>%
+     pivot_wider(names_from = period,
+                 values_from = value, 
+                 values_fn = sum) %>% 
+     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
+  
+  
+  quarterly <- detailed %>%
+    select(-period, -type) %>%
+    pivot_wider(names_from = quarter,
+                values_from = value, 
+                values_fn = sum) %>% 
+    mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
     
+  overview = monthly %>% left_join(quarterly, by = "category")
   
-  
-  return(list(raw_cc = ccdata, fixed_assets = clearing,
-              tidy_actuals = actuals,
-              summary = overview))
+    
+
+  return(list(raw_cc = ccdata,
+              fixed_assets = clearing,
+              actuals = actuals,
+              detailed = detailed,
+              monthly = monthly, 
+              quarterly = quarterly, 
+              overview = overview))
   
   
 }
 
 # OPlan
-da_op_plan  <- function(){ 
+da_op_plan  <- function(tw){ 
   
 # detailed
   
-op_plan_21 <- openxlsx::read.xlsx("datacc.xlsx", "OP") %>% 
+  detailed <- openxlsx::read.xlsx("datacc.xlsx", "OP") %>% 
   as_tibble() %>%  janitor::clean_names() %>% 
   mutate(period = as.Date(period, 
                           origin = "1899-12-30")) %>% 
   mutate(period = as.yearmon(period)) %>% 
   mutate(quarter = quarter(period)) %>% 
-  mutate(quarter = paste0("Q",quarter))
+  mutate(quarter = paste0("Q",quarter)) %>% 
+  mutate(type = "op") %>% 
+  filter(period <= tw )
+  
+
   
 
 # monthly
-monthly <- op_plan_21 %>% 
+monthly <- detailed %>% 
   select(-quarter) %>% 
   pivot_wider(names_from = period, values_from = value)
 
 
 # quarterly 
-quarterly <- op_plan_21 %>% 
-  select(-period) %>% 
+quarterly <- detailed %>% 
+  select(-period, -type) %>% 
   pivot_wider(names_from = quarter,
               values_from = value,
-              values_fn = sum) %>% 
-  mutate(full_year = rowSums(select(., -category)))
+              values_fn = sum) 
+  # mutate(full_year = rowSums(select(., -category)))
 
 
 overview = monthly %>% left_join(quarterly, by = "category")
 
 
 return(list(
-       detailed = op_plan_21,
+       detailed = detailed,
        monthly = monthly,
        quarterly = quarterly,
        overview = overview))
@@ -160,32 +200,34 @@ return(list(
 }
 
 # Forecast
-da_forecast <- function(){ 
+da_forecast <- function(tw){ 
   
   # detailed
-  
-  forecast_21 <- openxlsx::read.xlsx("datacc.xlsx", "F7") %>% 
+  detailed <- openxlsx::read.xlsx("datacc.xlsx", "F7") %>% 
     as_tibble() %>%  janitor::clean_names() %>% 
     mutate(period = as.Date(period, 
                             origin = "1899-12-30")) %>% 
     mutate(period = as.yearmon(period)) %>% 
     mutate(quarter = quarter(period)) %>% 
-    mutate(quarter = paste0("Q",quarter))
+    mutate(quarter = paste0("Q",quarter)) %>% 
+    mutate(type = "fcast") %>%
+    filter(period <= tw )
+  
   
   
   # monthly
-  monthly <- forecast_21 %>% 
+  monthly <- detailed %>% 
     select(-quarter) %>% 
     pivot_wider(names_from = period, values_from = value)
   
   
   # quarterly 
-  quarterly <- forecast_21 %>% 
-    select(-period) %>% 
+  quarterly <- detailed %>% 
+    select(-period, -type) %>% 
     pivot_wider(names_from = quarter,
                 values_from = value,
-                values_fn = sum) %>% 
-    mutate(full_year = rowSums(select(., -category)))
+                values_fn = sum) 
+    # mutate(full_year = rowSums(select(., -category)))
   
   
   
@@ -193,7 +235,7 @@ da_forecast <- function(){
 
   
   return(list(
-    detailed = op_plan_21,
+    detailed = detailed,
     monthly = monthly,
     quarterly = quarterly,
     overview = overview))
@@ -201,32 +243,147 @@ da_forecast <- function(){
   
 }
 
+# consolidation
+da_actuals  = da_close_actuals(tw)$overview
+da_forecast = da_forecast(tw)$overview
+da_op       = da_op_plan(tw)$overview
+
+
+return(list( da_actuals  = da_actuals,
+             da_forecast = da_forecast,
+             da_op       = da_op)
+       )
+
+
+}
+
+
+# Returns the final table with the overview by time window
+# details about algorithm insight each function embeed.
+dproducts <- function(period, quarter){ 
+
+# MTD
+mtd_output <- function(period){ 
+  
+act = da_close_actuals(period)$overview %>% select(category, contains(period)) %>% 
+  rename(MTD_actuals = period) 
+
+op = da_op_plan(period)$overview %>% select(category, contains(period)) %>%
+  rename(MTD_OP = period)
+
+fcast = da_forecast(period)$overview %>% select(category, contains(period)) %>%
+  rename(MTD_forecast = period)
+
+MTD = op %>%
+  left_join(fcast, by = "category") %>%
+  left_join(act, by = "category") %>%
+  select(category, MTD_actuals,MTD_forecast,MTD_OP) %>%
+  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
+  mutate(MTD_actuals  = MTD_actuals/1000,
+         MTD_forecast = MTD_forecast/1000,
+         MTD_OP       = MTD_OP/1000) %>% 
+  mutate(MTD_VF  = MTD_actuals-MTD_forecast,
+         MTD_VOP = MTD_actuals-MTD_OP) %>% 
+  mutate_if(is.numeric, round)
+
+return(MTD)
+
+}
+
+# QTD
+qtd_output <- function(period, quarter){ 
+  
+  act = da_close_actuals(period)$overview %>% select(category, contains(quarter)) %>% 
+    rename(QTD_actuals = quarter)
+  
+  op = da_op_plan(period)$overview %>% select(category, contains(quarter)) %>%
+    rename(QTD_OP = quarter)
+  
+  fcast = da_forecast(period)$overview %>% select(category, contains(quarter)) %>%
+    rename(QTD_forecast = quarter)
+  
+  QTD = op %>%
+    left_join(fcast, by = "category") %>%
+    left_join(act, by = "category") %>%
+    select(category, QTD_actuals,QTD_forecast,QTD_OP) %>%
+    mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
+    mutate(QTD_actuals  = QTD_actuals/1000,
+           QTD_forecast = QTD_forecast/1000,
+           QTD_OP       = QTD_OP/1000) %>% 
+    mutate(QTD_VF  = QTD_actuals-QTD_forecast,
+           QTD_VOP = QTD_actuals-QTD_OP) %>% 
+    mutate_if(is.numeric, round)
+  
+  
+  
+  return(QTD)
+  
+}
+
+# YTD 
+ytd_output <- function(period){ 
+  
+  act = da_close_actuals(period)$overview %>% 
+    select(!contains("Q"),-type) %>% 
+    mutate(ytd = rowSums(select(., -category))) %>% 
+    select(category, YTD_actuals = ytd)
+    
+  
+  op = da_op_plan(period)$overview %>% 
+    select(!contains("Q"),-type) %>% 
+    mutate(ytd = rowSums(select(., -category))) %>% 
+    select(category, YTD_OP = ytd)
+  
+  
+  
+  fcast = da_forecast(period)$overview %>% 
+    select(!contains("Q"),-type) %>% 
+    mutate(ytd = rowSums(select(., -category))) %>% 
+    select(category, YTD_forecast = ytd)
+  
+  
+  
+  YTD = op %>%
+    left_join(fcast, by = "category") %>%
+    left_join(act, by = "category") %>%
+    select(category, YTD_actuals,YTD_forecast,YTD_OP) %>%
+    mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
+    mutate(YTD_actuals  = YTD_actuals/1000,
+           YTD_forecast = YTD_forecast/1000,
+           YTD_OP       = YTD_OP/1000) %>% 
+    mutate(YTD_VF  = YTD_actuals-YTD_forecast,
+           YTD_VOP = YTD_actuals-YTD_OP) %>% 
+    mutate_if(is.numeric, round)
+  
+  
+  
+  return(YTD)
+  
+}
+
+# consolidation
+mtd = mtd_output(period)
+qtd = qtd_output(period, quarter)
+ytd = ytd_output(period)
+
+
+overview = mtd %>%
+  left_join(qtd, by = "category") %>% 
+  left_join(ytd, by = "category")
+
+
+return(overview)
+
+}
+
+
+
+# IoT Analysis -----------------------------------------------------------
 
 
 
 
-
-
-act = da_close_actuals()$summary
-
-op = da_op_plan()$overview
-
-fcast = da_forecast()$overview
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# DA Wrangling  -----------------------------------------------------------
+# Hoppe Consolidation ----------------------------------------------------
 
 DA  = "S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting"
 setwd(DA)
