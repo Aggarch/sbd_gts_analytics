@@ -3,8 +3,9 @@ library(tidyverse)
 library(lubridate)
 library(progressr)
 library(readxl)
+library(future)
 library(tictoc)
-library(furr)
+library(furrr)
 library(zoo)
 
 
@@ -103,6 +104,8 @@ consolidation <-function(data){
   
   n_cores <- parallel::detectCores()
   plan(multisession, workers = n_cores)
+  
+  options(future.rng.onMisuse="ignore")
   
   
   #tic()
