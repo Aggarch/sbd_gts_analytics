@@ -9,11 +9,11 @@ library(lubridate)
 library(zoo)
 
 
-# datacc.xlsx contains information updated for DA cost center, historical data YTD,
+# datacc_da.xlsx contains information updated for DA cost center, historical data YTD,
 # raw data without any aditional analysis, new DA Data can be appendiced manually,
 # downloading the KSB1 report from SAP source for the corresponding cost center ID
 
-# C:/Users/AEG1130/Documents/data/datacc.xlsx contains the historical data from 
+# C:/Users/AEG1130/Documents/data/datacc_da.xlsx contains the historical data from 
 # (DA CC), Appendized data coming from last fiscal close SAPc11-KSB1, report. 
 
 
@@ -32,14 +32,14 @@ setwd("C:/Users/AEG1130/Documents/data")
 
 # Returns the overview for actuals, OP and forecast.
 # detailed process embeed into each function. 
-# where tw = time window. 
+# where tw = time window as specific period monthyear  e.g: "Jan 2021"
 lifeblood <- function(tw){ 
 
 # ACTUALS 
 da_close_actuals <- function(tw){
   
   # cost_centers_data.  
-  ccdata <- openxlsx::read.xlsx("datacc.xlsx", "hist_raw") %>% 
+  ccdata <- openxlsx::read.xlsx("datacc_da.xlsx", "hist_raw") %>% 
     as_tibble() %>%  janitor::clean_names()
   
   
@@ -159,7 +159,7 @@ da_op_plan  <- function(tw){
   
 # detailed
   
-  detailed <- openxlsx::read.xlsx("datacc.xlsx", "OP") %>% 
+  detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "OP") %>% 
   as_tibble() %>%  janitor::clean_names() %>% 
   mutate(period = as.Date(period, 
                           origin = "1899-12-30")) %>% 
@@ -203,7 +203,7 @@ return(list(
 da_forecast <- function(tw){ 
   
   # detailed
-  detailed <- openxlsx::read.xlsx("datacc.xlsx", "F7") %>% 
+  detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
     as_tibble() %>%  janitor::clean_names() %>% 
     mutate(period = as.Date(period, 
                             origin = "1899-12-30")) %>% 
@@ -265,14 +265,23 @@ dproducts <- function(period, quarter){
 # MTD
 mtd_output <- function(period){ 
   
-act = da_close_actuals(period)$overview %>% select(category, contains(period)) %>% 
-  rename(MTD_actuals = period) 
+act = da_close_actuals(period)$overview %>% 
+  select(category,
+         contains(all_of(period))) %>% 
+  rename(MTD_actuals = period)
 
-op = da_op_plan(period)$overview %>% select(category, contains(period)) %>%
+
+op = da_op_plan(period)$overview %>% 
+  select(category,
+         contains(all_of(period))) %>%
   rename(MTD_OP = period)
 
-fcast = da_forecast(period)$overview %>% select(category, contains(period)) %>%
+
+fcast = da_forecast(period)$overview %>%
+  select(category,
+         contains(all_of(period))) %>%
   rename(MTD_forecast = period)
+
 
 MTD = op %>%
   left_join(fcast, by = "category") %>%
@@ -293,14 +302,21 @@ return(MTD)
 # QTD
 qtd_output <- function(period, quarter){ 
   
-  act = da_close_actuals(period)$overview %>% select(category, contains(quarter)) %>% 
+  act = da_close_actuals(period)$overview %>%
+    select(category,
+           contains(all_of(quarter))) %>% 
     rename(QTD_actuals = quarter)
   
-  op = da_op_plan(period)$overview %>% select(category, contains(quarter)) %>%
+  op = da_op_plan(period)$overview %>% 
+    select(category,
+           contains(all_of(quarter))) %>%
     rename(QTD_OP = quarter)
   
-  fcast = da_forecast(period)$overview %>% select(category, contains(quarter)) %>%
+  fcast = da_forecast(period)$overview %>% 
+    select(category,
+           contains(all_of(quarter))) %>%
     rename(QTD_forecast = quarter)
+  
   
   QTD = op %>%
     left_join(fcast, by = "category") %>%
@@ -377,8 +393,14 @@ return(overview)
 }
 
 
+# Produce the output and generate a visual of it 
+table = dproducts("Aug 2021", "Q3")
+table %>% flextable::flextable()
+
 
 # IoT Analysis -----------------------------------------------------------
+
+
 
 
 

@@ -62,6 +62,8 @@ read_forecast_ncb <- function(file, sheet){
       mutate(file_name = file) %>% 
       slice(-1) %>% 
       as_tibble() %>% 
+      mutate(file = file,
+             sheet = sheet) %>% 
       select(!contains("q")) %>% 
       select(!contains("fy")) %>% 
       select(!contains("na")) %>% 

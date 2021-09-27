@@ -1,4 +1,8 @@
 
+
+# Usually booking stops at the end of second day after close.  
+# Complete Picture will be ready on second, 
+
 actual_t = "S:/North_America/Baltimore-BLT/Transformation Office/Growth Investment Tracking/Actual Tracking"
 
 setwd(actual_t)
