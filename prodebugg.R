@@ -19,7 +19,7 @@ setwd(bottom_up)
 
 # List of resources 
 
-resources <- function(period){ 
+resources <- function(period,account){ 
   
 data <- list.dirs() %>%
   as_tibble() %>% 
@@ -39,8 +39,8 @@ data <- list.dirs() %>%
                           str_detect(files,"CB")~"CB",
                           str_detect(files,"Capex")~"Capex",
                           str_detect(files,"SalesSGM")~"SalesSGM",
-                          TRUE ~ as.character(files)))
-# filter(grepl(account, sheets))
+                          TRUE ~ as.character(files))) %>% 
+filter(grepl(account, sheets))
 
 return(data)
 
@@ -49,7 +49,7 @@ return(data)
 
 
 # specific list of resources 
-object = resources("8")
+object = resources("8", "NonCB")
 
 
 

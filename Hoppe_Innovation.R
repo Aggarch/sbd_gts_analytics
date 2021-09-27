@@ -33,7 +33,10 @@ setwd("C:/Users/AEG1130/Documents/data")
 # Returns the overview for actuals, OP and forecast.
 # detailed process embeed into each function. 
 # where tw = time window as specific period monthyear  e.g: "Jan 2021"
-lifeblood <- function(tw){ 
+# Final output is a single table containing all observation in a pivot 
+# wider structure, cutting at the inputed monthyear, to visualize an 
+# specific observational unit, use the type filter. 
+consolidated_data <- function(tw){ 
 
 # ACTUALS 
 da_close_actuals <- function(tw){
@@ -121,7 +124,8 @@ da_close_actuals <- function(tw){
     mutate(quarter = quarter(period)) %>% 
     mutate(quarter = paste0("Q",quarter)) %>% 
     mutate(type = "actuals") %>% 
-    filter(period <= tw )
+    filter(period <= tw ) 
+
   
   
   monthly <- detailed %>%
@@ -139,7 +143,9 @@ da_close_actuals <- function(tw){
                 values_fn = sum) %>% 
     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
     
-  overview = monthly %>% left_join(quarterly, by = "category")
+  overview = monthly %>% left_join(quarterly, by = "category") %>% 
+    mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
+  
   
     
 
@@ -249,35 +255,46 @@ da_forecast = da_forecast(tw)$overview
 da_op       = da_op_plan(tw)$overview
 
 
-return(list( da_actuals  = da_actuals,
-             da_forecast = da_forecast,
-             da_op       = da_op)
-       )
+consolidated_data = da_actuals %>%
+                    bind_rows(da_op) %>%
+                    bind_rows(da_forecast) %>% 
+  relocate(.before = Q1, tw) %>% 
+  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
 
+
+
+return(consolidated_data)
 
 }
 
 
 # Returns the final table with the overview by time window
 # details about algorithm insight each function embeed.
-dproducts <- function(period, quarter){ 
+# the inputs are also time windows, but the underlying 
+# data for the outputs creation is the consolidated_data()
+digital_products <- function(period, quarter){ 
 
+data <- consolidated_data(period)
+    
 # MTD
 mtd_output <- function(period){ 
   
-act = da_close_actuals(period)$overview %>% 
+act = data %>% 
+  filter(type == "actuals") %>% 
   select(category,
          contains(all_of(period))) %>% 
   rename(MTD_actuals = period)
 
 
-op = da_op_plan(period)$overview %>% 
+op = data %>% 
+  filter(type == "op") %>% 
   select(category,
          contains(all_of(period))) %>%
   rename(MTD_OP = period)
 
 
-fcast = da_forecast(period)$overview %>%
+fcast = data %>% 
+  filter(type == "fcast") %>% 
   select(category,
          contains(all_of(period))) %>%
   rename(MTD_forecast = period)
@@ -302,17 +319,20 @@ return(MTD)
 # QTD
 qtd_output <- function(period, quarter){ 
   
-  act = da_close_actuals(period)$overview %>%
+  act = data %>% 
+    filter(type == "actuals") %>% 
     select(category,
            contains(all_of(quarter))) %>% 
     rename(QTD_actuals = quarter)
   
-  op = da_op_plan(period)$overview %>% 
+  op = data %>% 
+    filter(type == "op") %>% 
     select(category,
            contains(all_of(quarter))) %>%
     rename(QTD_OP = quarter)
   
-  fcast = da_forecast(period)$overview %>% 
+  fcast = data %>%
+    filter(type == "fcast") %>% 
     select(category,
            contains(all_of(quarter))) %>%
     rename(QTD_forecast = quarter)
@@ -339,20 +359,23 @@ qtd_output <- function(period, quarter){
 # YTD 
 ytd_output <- function(period){ 
   
-  act = da_close_actuals(period)$overview %>% 
+  act = data %>% 
+    filter(type == "actuals") %>% 
     select(!contains("Q"),-type) %>% 
     mutate(ytd = rowSums(select(., -category))) %>% 
     select(category, YTD_actuals = ytd)
     
   
-  op = da_op_plan(period)$overview %>% 
+  op = data %>%
+    filter(type == "op") %>% 
     select(!contains("Q"),-type) %>% 
     mutate(ytd = rowSums(select(., -category))) %>% 
     select(category, YTD_OP = ytd)
   
   
   
-  fcast = da_forecast(period)$overview %>% 
+  fcast = data %>% 
+    filter(type == "fcast") %>% 
     select(!contains("Q"),-type) %>% 
     mutate(ytd = rowSums(select(., -category))) %>% 
     select(category, YTD_forecast = ytd)

@@ -1,14 +1,19 @@
 
 library(tidyverse)
 library(lubridate)
+library(progressr)
+library(readxl)
+library(tictoc)
+library(furr)
 library(zoo)
+
 
 # Extension scripting of prodebugg.R created to verify structure across all 
 # NonCB related F09 Forecast, create a large table containing all F09 consolidation 
-# and contrast it with F9 Targets, to identify possible missrecordings across docs. 
+# and contrast it with F9 Targets, to identify possible miss recordings across docs. 
 # the scripts also allows to identify specific areas where updating its necessary 
 # a lot of cases will be correctly updated naturally because of the redundancy of 
-# the system itself XOR no changes forecasted.   
+# the system XOR no changes forecasted.   
 
 
 bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
@@ -88,16 +93,28 @@ read_forecast_ncb <- function(file, sheet){
     # Non-CB  Capex files colnames exists in fist row, SGMSales its a special 
     # example, where each sheet contains 3 or 4 different small tables. 
     
-  }
+}
+
+
   
 # Consolidation
 consolidation <-function(data){
   
-  map2(datata$fullp, 
-       datata$sheets,
-       read_forecast_ncb) %>% 
-    map_dfr(., bind_rows) 
   
+  n_cores <- parallel::detectCores()
+  plan(multisession, workers = n_cores)
+  
+  #tic()
+  data <- future_map2(data$fullp, 
+                      data$sheets,
+                      read_forecast_ncb) %>% 
+          future_map_dfr(., bind_rows, .progress = T)
+  
+  #toc()
+
+  plan(sequential)
+  
+  return(data)
   
 }
 
@@ -108,23 +125,27 @@ consolidation <-function(data){
 
 setwd(bottom_up) 
 
-ncb_fct_data <- consolidation(
-  resources(9)) %>% 
+
+looping <- consolidation(resources(9))
+
+
+ncb_fct_data<- looping %>% 
   select(team, growth_initiative, spend_category, spend_description, 
          september,october, november, december) %>% 
   filter(!is.na(growth_initiative)) %>% 
   mutate_at(c("september",
               "october",
               "november",
-              "december"), as.numeric)
+              "december"), as.double)
+
+
 
 collected <- ncb_fct_data%>% 
   mutate(team = ifelse(is.na(team),"NA",team)) %>% 
   pivot_longer(!c(team, growth_initiative, spend_category,
                   spend_description),
                names_to = "month", values_to = "value") %>% 
-  replace_na(list(value = 0)) %>% 
-  mutate(quart = ifelse(month == "september","Q1","Q2"))
+  replace_na(list(value = 0)) 
 
   
 
@@ -145,9 +166,8 @@ target <- openxlsx::read.xlsx("non_cb_f9.xlsx") %>%
   pivot_longer(!c(team, growth_initiative, spend_category,
                   spend_description),
                names_to = "month", values_to = "value") %>% 
-  replace_na(list(value = 0)) %>% 
-  mutate(quart = ifelse(month == "september","Q1","Q2"))
-  
+  replace_na(list(value = 0))
+
 
 
 # Diagnose ----------------------------------------------------------------
@@ -192,5 +212,7 @@ sum(details$divergence)
 # The reason why there is divergence its due to the fact that there exist multiple 
 # files with the same team, initiative and month, usually duplicated in 7 files. 
 # that belongs to NA & HQ. 
+
+# Reconciled. 
 
 
