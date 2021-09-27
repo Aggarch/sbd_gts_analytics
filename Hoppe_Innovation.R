@@ -417,7 +417,7 @@ return(overview)
 
 
 # Produce the output and generate a visual of it 
-table = dproducts("Aug 2021", "Q3")
+table = digital_products("Aug 2021", "Q3")
 table %>% flextable::flextable()
 
 

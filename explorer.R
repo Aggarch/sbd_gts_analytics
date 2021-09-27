@@ -104,6 +104,7 @@ consolidation <-function(data){
   n_cores <- parallel::detectCores()
   plan(multisession, workers = n_cores)
   
+  
   #tic()
   data <- future_map2(data$fullp, 
                       data$sheets,
@@ -112,6 +113,7 @@ consolidation <-function(data){
   
   #toc()
 
+  
   plan(sequential)
   
   return(data)
