@@ -1,11 +1,11 @@
 
-# DA Actuals automation;
-# source ::: SAP KSB1 report from instance c11
-# Change data path 
 
+# DA XOR Digital Products Actuals automation;
+# source ::: SAP KSB1 report from instance c11
 
 library(tidyverse)
 library(lubridate)
+library(openxlsx)
 library(zoo)
 
 
@@ -109,12 +109,6 @@ da_close_actuals <- function(tw){
     summarise(clearing_account = sum(clearing_account),.groups="drop") %>% 
     rename(value = clearing_account)
   
-    # pivot_wider(names_from = period, values_from = clearing_account) %>%
-    # replace(.,is.na(.),0) %>%
-    # # janitor::adorn_totals() %>%
-    # mutate(type = "adjustment") %>%
-    # relocate(.before = category, type)
-  
   
   detailed <- resumen_actuals %>% 
     bind_rows(resumen_capitalized) %>% 
@@ -124,9 +118,8 @@ da_close_actuals <- function(tw){
     mutate(quarter = quarter(period)) %>% 
     mutate(quarter = paste0("Q",quarter)) %>% 
     mutate(type = "actuals") %>% 
-    filter(period <= tw ) 
+    filter(period <= all_of(tw)) 
 
-  
   
   monthly <- detailed %>%
      select(-quarter) %>%
@@ -153,8 +146,8 @@ da_close_actuals <- function(tw){
               fixed_assets = clearing,
               actuals = actuals,
               detailed = detailed,
-              monthly = monthly, 
-              quarterly = quarterly, 
+              # monthly = monthly, 
+              # quarterly = quarterly, 
               overview = overview))
   
   
@@ -173,7 +166,7 @@ da_op_plan  <- function(tw){
   mutate(quarter = quarter(period)) %>% 
   mutate(quarter = paste0("Q",quarter)) %>% 
   mutate(type = "op") %>% 
-  filter(period <= tw )
+  filter(period <= all_of(tw))
   
 
   
@@ -198,8 +191,8 @@ overview = monthly %>% left_join(quarterly, by = "category")
 
 return(list(
        detailed = detailed,
-       monthly = monthly,
-       quarterly = quarterly,
+       # monthly = monthly,
+       # quarterly = quarterly,
        overview = overview))
 
 
@@ -211,13 +204,11 @@ da_forecast <- function(tw){
   # detailed
   detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
     as_tibble() %>%  janitor::clean_names() %>% 
-    mutate(period = as.Date(period, 
-                            origin = "1899-12-30")) %>% 
     mutate(period = as.yearmon(period)) %>% 
     mutate(quarter = quarter(period)) %>% 
     mutate(quarter = paste0("Q",quarter)) %>% 
     mutate(type = "fcast") %>%
-    filter(period <= tw )
+    filter(period <= all_of(tw))
   
   
   
@@ -242,8 +233,8 @@ da_forecast <- function(tw){
   
   return(list(
     detailed = detailed,
-    monthly = monthly,
-    quarterly = quarterly,
+    # monthly = monthly,
+    # quarterly = quarterly,
     overview = overview))
   
   
@@ -258,7 +249,7 @@ da_op       = da_op_plan(tw)$overview
 consolidated_data = da_actuals %>%
                     bind_rows(da_op) %>%
                     bind_rows(da_forecast) %>% 
-  relocate(.before = Q1, tw) %>% 
+  relocate(.before = Q1, all_of(tw)) %>% 
   mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
 
 
@@ -417,12 +408,27 @@ return(overview)
 
 
 # Produce the output and generate a visual of it 
-table = digital_products("Aug 2021", "Q3")
-table %>% flextable::flextable()
+DA_table = digital_products("Aug 2021", "Q3")
+DA_table %>% flextable::flextable()
+
+
 
 
 # IoT Analysis -----------------------------------------------------------
 
+
+# In this case seems simpler, Cost center fiscal month closed data grouped by 
+# cost of element name, equals the pivot table at IoT sheet, its just re-arranged
+# and primitively categorized as C&B or NonCB class. historically natural grouping 
+# consist in 12 elements, and actuals UI is structure in 22 categories, incluiding 
+# supplies, others and Capitalized always Zero. 
+
+# Final data product as UI Only possess 16 categories with PSD playing passive role.
+
+
+
+# august_hoppe_exp.xlsx
+# cc9401400233 IOT_Aug.xlsx
 
 
 
@@ -497,4 +503,49 @@ hoppe_consolidation %>%
 
 
 
-# https://gt.rstudio.com/articles/case-study-gtcars.html
+
+
+# Data Fcast Management ---------------------------------------------------
+
+# re-populate Forecast with delivered close report actuals 
+refresh.fcast.data <- function(observation){ 
+  
+  
+  # Close actuals
+  closed.data  <-  DA_table %>%
+    select(category, MTD_actuals) %>%
+    rename(value  = MTD_actuals) %>% 
+    mutate(period = observation) %>% 
+    relocate(.before = value, period)
+  
+  
+  # Refreshin forecast 
+  current.fcast <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
+    as_tibble() %>%  janitor::clean_names() %>% 
+    filter(period != observation) %>% 
+    mutate(period = as.character(period))
+  
+  # Update forecast 
+  updated.fcast <- current.fcast %>%
+    bind_rows(closed.data) %>% 
+    mutate(period = as.yearmon(period))
+  
+  
+  
+  # File Management :::
+  wb <- openxlsx::loadWorkbook("datacc_da.xlsx")
+  
+  addWorksheet(wb,"Fcast")
+    writeDataTable(wb, sheet = "Fcast", updated.fcast)
+      removeWorksheet(wb, "F7")
+        renameWorksheet(wb, "Fcast", "F7")
+          saveWorkbook(wb,"datacc_da.xlsx",overwrite = T)
+  
+  
+  print("updated 100%")
+  
+}
+
+
+
+
