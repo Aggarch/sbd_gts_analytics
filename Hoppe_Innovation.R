@@ -9,7 +9,7 @@ library(openxlsx)
 library(zoo)
 
 
-# datacc_da.xlsx contains information updated for DA cost center, historical data YTD,
+# datacc_da_contrast.xlsx contains information updated for DA cost center, historical data YTD,
 # raw data without any aditional analysis, new DA Data can be appendiced manually,
 # downloading the KSB1 report from SAP source for the corresponding cost center ID
 
@@ -22,7 +22,6 @@ library(zoo)
 # Data Integration ::: Directly Sourced. 
 getwd()
 setwd("C:/Users/AEG1130/Documents/data")
-
 
 
 
@@ -42,7 +41,7 @@ consolidated_data <- function(tw){
 da_close_actuals <- function(tw){
   
   # cost_centers_data.  
-  ccdata <- openxlsx::read.xlsx("datacc_da.xlsx", "hist_raw") %>% 
+  ccdata <- openxlsx::read.xlsx("datacc_da_contrast.xlsx", "hist_raw") %>% 
     as_tibble() %>%  janitor::clean_names()
   
   
@@ -89,8 +88,7 @@ da_close_actuals <- function(tw){
                                str_detect(cost_element_name,"EMP DEV SHOW EXHIBIT")~"Supplies",
                                str_detect(cost_element_name,"HAMILTON MANU")~"Gyro Development - Didio",
                                TRUE ~ as.character("Others"))) %>%
-    relocate(.before = cost_element, category )%>%
-    replace(.,is.na(.),0)
+    relocate(.before = cost_element, category )
 
   
 
@@ -158,7 +156,7 @@ da_op_plan  <- function(tw){
   
 # detailed
   
-  detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "OP") %>% 
+  detailed <- openxlsx::read.xlsx("datacc_da_contrast.xlsx", "OP") %>% 
   as_tibble() %>%  janitor::clean_names() %>% 
   mutate(period = as.Date(period, 
                           origin = "1899-12-30")) %>% 
@@ -202,7 +200,7 @@ return(list(
 da_forecast <- function(tw){ 
   
   # detailed
-  detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
+  detailed <- openxlsx::read.xlsx("datacc_da_contrast.xlsx", "F7") %>% 
     as_tibble() %>%  janitor::clean_names() %>% 
     mutate(period = as.yearmon(period)) %>% 
     mutate(quarter = quarter(period)) %>% 
@@ -412,6 +410,12 @@ DA_table = digital_products("Aug 2021", "Q3")
 DA_table %>% flextable::flextable()
 
 
+# with datacc_da_contrast; deta values equals 1759594.74
+deta <- da_close_actuals("Aug 2021")$detailed
+
+sum(deta$value)
+
+# MTD equals 245 verify F7 and PO with Boss
 
 
 # IoT Analysis -----------------------------------------------------------
@@ -520,7 +524,7 @@ refresh.fcast.data <- function(observation){
   
   
   # Refreshin forecast 
-  current.fcast <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
+  current.fcast <- openxlsx::read.xlsx("datacc_da_contrast.xlsx", "F7") %>% 
     as_tibble() %>%  janitor::clean_names() %>% 
     filter(period != observation) %>% 
     mutate(period = as.character(period))
@@ -533,13 +537,13 @@ refresh.fcast.data <- function(observation){
   
   
   # File Management :::
-  wb <- openxlsx::loadWorkbook("datacc_da.xlsx")
+  wb <- openxlsx::loadWorkbook("datacc_da_contrast.xlsx")
   
   addWorksheet(wb,"Fcast")
     writeDataTable(wb, sheet = "Fcast", updated.fcast)
       removeWorksheet(wb, "F7")
         renameWorksheet(wb, "Fcast", "F7")
-          saveWorkbook(wb,"datacc_da.xlsx",overwrite = T)
+          saveWorkbook(wb,"datacc_da_contrast.xlsx",overwrite = T)
   
   
   print("updated 100%")
