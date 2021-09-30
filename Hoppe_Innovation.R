@@ -36,7 +36,7 @@ library(zoo)
 
 # Data Integration ::: Directly Sourced. 
 getwd()
-setwd("C:/Users/AEG1130/Documents/data")
+setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
 
 
 
@@ -45,11 +45,11 @@ setwd("C:/Users/AEG1130/Documents/data")
 # [[ datacc_da.xlsx OR contrast ]]
 
 # Returns the overview for actuals, OP and forecast.
-# detailed process embeed into each function. 
-# where tw = time window as specific period monthyear  e.g: "Jan 2021"
-# Final output is a single table containing all observation in a pivot 
-# wider structure, cutting at the inputed monthyear, to visualize an 
-# specific observational unit, use the type filter. 
+# detailed process into each function. 
+# where tw = time window as specific period month year  e.g: "Jan 2021"
+# Final output contains 3 tables detailed, consolidated, overview. 
+# detailed specific observational units types are filterable. 
+# DA = cc(221, 225, 226, 227)< IoT = (233)
 
 digital_products <- function(tw, q){ 
   
@@ -303,8 +303,7 @@ mtd_output <- function(tw){
                MTD_forecast = MTD_forecast/1000,
                MTD_OP       = MTD_OP/1000) %>% 
         mutate(MTD_VF  = MTD_actuals-MTD_forecast,
-               MTD_VOP = MTD_actuals-MTD_OP) %>% 
-        mutate_if(is.numeric, round) 
+               MTD_VOP = MTD_actuals-MTD_OP) 
 
 return(MTD)
 
@@ -331,9 +330,8 @@ qtd_output <- function(tw, q){
            QTD_forecast = QTD_forecast/1000,
            QTD_OP       = QTD_OP/1000) %>% 
     mutate(QTD_VF  = QTD_actuals-QTD_forecast,
-           QTD_VOP = QTD_actuals-QTD_OP) %>% 
-    mutate_if(is.numeric, round) 
-  
+           QTD_VOP = QTD_actuals-QTD_OP) 
+
   
   
   return(QTD)
@@ -360,9 +358,7 @@ ytd_output <- function(tw){
            YTD_forecast = YTD_forecast/1000,
            YTD_OP       = YTD_OP/1000) %>% 
     mutate(YTD_VF  = YTD_actuals-YTD_forecast,
-           YTD_VOP = YTD_actuals-YTD_OP) %>% 
-    mutate_if(is.numeric, round) 
-  
+           YTD_VOP = YTD_actuals-YTD_OP) 
   
   return(YTD)
   
@@ -388,37 +384,31 @@ overview_dp = mtd %>%
   
 
 return(list(consolidated_data_dp = consolidated_data,
-            detailed_data_dp = detailed_data,
+            detailed_data_dp = detailed_data_dp,
             overview_dp = overview_dp))
 
 
 }
 
-# Produce the output and generate a visual 
+DA_tables <- digital_products(tw, q) 
 
-# DA_table <- digital_products(tw, q)
+  
+
+# Function exec delivers the 3 outputs that can be combined and or visualize. 
 # DA_table$overview %>% flextable::flextable()
-
-
-# with datacc_da.xlsx_contrast; deta values equals 1759594.74
-# deta <- da_close_actuals("Aug 2021")$detailed
-# sum(deta$value)
-# MTD equals 245 verify F7 and PO with Boss
-
-
 
 
 
 # IoT Analysis -----------------------------------------------------------
 
+# [[ datacc_iot.xlsx ]]
 
-# In this case seems simpler, Cost center fiscal month closed data grouped by 
+# As well as dp, KSB1 c11 SAP it's the source. 
 # cost of element name, equals the pivot table at IoT sheet, its just re-arranged
 # and primitively categorized as C&B or NonCB class. historically natural grouping 
-# consist in 12 elements, and actuals UI is structure in 22 categories, incluiding 
-# supplies, others and Capitalized always Zero. 
+# consist in 16 elements, UI is structure in categories, incluiding 
+# supplies & others, Capitalized always Zero. 
 
-# Final data product as UI Only possess 16 categories with PSD playing passive role.
 
 iot_products <- function(tw, q){
   
@@ -464,8 +454,8 @@ iot_products <- function(tw, q){
                                  str_detect(cost_element_name,"T&E")~"T&E",
                                  str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
                                  str_detect(cost_element_name,"OS FEE GENERAL")~"IoT Cloud Service - AG Software",
-                                 str_detect(cost_element_name,"MISC AC")~"ConsumerApp - ZIGATTA",
-                                 str_detect(cost_element_name,"ZIGATTA")~"ConsumerApp - ZIGATTA",
+                                 str_detect(cost_element_name,"MISC AC")~"ConsumerApp - Zigatta",
+                                 str_detect(cost_element_name,"ZIGATTA")~"ConsumerApp - Zigatta",
                                  TRUE ~ as.character("Others"))) %>%
       relocate(.before = cost_element, category )
     
@@ -651,9 +641,8 @@ iot_products <- function(tw, q){
              MTD_forecast = MTD_forecast/1000,
              MTD_OP       = MTD_OP/1000) %>% 
       mutate(MTD_VF  = MTD_actuals-MTD_forecast,
-             MTD_VOP = MTD_actuals-MTD_OP) %>% 
-      mutate_if(is.numeric, round) 
-    
+             MTD_VOP = MTD_actuals-MTD_OP) 
+
     
     return(MTD)
     
@@ -680,9 +669,7 @@ iot_products <- function(tw, q){
              QTD_forecast = QTD_forecast/1000,
              QTD_OP       = QTD_OP/1000) %>% 
       mutate(QTD_VF  = QTD_actuals-QTD_forecast,
-             QTD_VOP = QTD_actuals-QTD_OP) %>% 
-      mutate_if(is.numeric, round) 
-    
+             QTD_VOP = QTD_actuals-QTD_OP) 
     
     
     return(QTD)
@@ -709,9 +696,8 @@ iot_products <- function(tw, q){
              YTD_forecast = YTD_forecast/1000,
              YTD_OP       = YTD_OP/1000) %>% 
       mutate(YTD_VF  = YTD_actuals-YTD_forecast,
-             YTD_VOP = YTD_actuals-YTD_OP) %>% 
-      mutate_if(is.numeric, round) 
-    
+             YTD_VOP = YTD_actuals-YTD_OP) 
+
     
     return(YTD)
     
@@ -736,6 +722,7 @@ iot_products <- function(tw, q){
     mutate_if(is.character, str_trim)
   
   
+  
   return(list(consolidated_data_iot = consolidated_data_iot,
               detailed_data_iot = detailed_data_iot,
               overview_iot = overview_iot))
@@ -743,10 +730,32 @@ iot_products <- function(tw, q){
   
 }
 
+IoT_tables <- iot_products(tw,q)
 
 
 
 # Hoppe Consolidation ----------------------------------------------------
+
+
+hoppe_consol <-
+  DA_tables$overview_dp %>% 
+  bind_rows(IoT_tables$overview_iot) %>% 
+  group_by(category, vendor) %>% 
+  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
+  ungroup()
+
+
+hoppe_consol_resumen <- 
+  hoppe_consol %>% 
+  mutate(category = ifelse(str_detect(category,"PSD"),
+                           "Product Service Investment", category)) %>% 
+  group_by(category, vendor) %>% 
+  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
+  ungroup()
+  
+  
+  
+
 
 DA  = "S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting"
 setwd(DA)
