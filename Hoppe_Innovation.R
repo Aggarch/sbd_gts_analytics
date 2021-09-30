@@ -90,7 +90,7 @@ dp_close_actuals <- function(tw){
     mutate(category =case_when(str_detect(cost_element_name,"EMP BEN")~"C&B",
                                str_detect(cost_element_name,"PR TAXE")~"C&B",
                                str_detect(cost_element_name,"WAGE")~"C&B",
-                               str_detect(cost_element_name,"DEMO")~"Demo Tools",
+                               str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
                                str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant",
                                str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
                                str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
@@ -255,7 +255,7 @@ dp_fcast         <- function(tw){
 
 
 # detailed 
-detailed_data     = dp_close_actuals(tw)$detailed %>% 
+detailed_data_dp     <- dp_close_actuals(tw)$detailed %>% 
                     bind_rows(dp_op_plan(tw)$detailed) %>% 
                     bind_rows(dp_fcast(tw)$detailed) %>% 
   mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) 
@@ -263,7 +263,7 @@ detailed_data     = dp_close_actuals(tw)$detailed %>%
 
 
 # consolidation
-consolidated_data = dp_close_actuals(tw)$overview %>%
+consolidated_data_dp <- dp_close_actuals(tw)$overview %>%
                     bind_rows(dp_op_plan(tw)$overview) %>%
                     bind_rows(dp_fcast(tw)$overview) %>% 
   mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
@@ -375,7 +375,7 @@ qtd = qtd_output(tw, q)
 ytd = ytd_output(tw)
 
 
-overview = mtd %>%
+overview_dp = mtd %>%
   left_join(qtd, by = "category") %>% 
   left_join(ytd, by = "category") %>% 
   mutate_if(is.numeric, round) %>% 
@@ -387,9 +387,9 @@ overview = mtd %>%
 
   
 
-return(list(consolidated_data = consolidated_data,
-            detailed_data = detailed_data,
-            overview = overview))
+return(list(consolidated_data_dp = consolidated_data,
+            detailed_data_dp = detailed_data,
+            overview_dp = overview_dp))
 
 
 }
@@ -612,14 +612,14 @@ iot_products <- function(tw, q){
   
   
   # detailed 
-  detailed_data         <- iot_close_actuals(tw)$detailed %>% 
+  detailed_data_iot     <- iot_close_actuals(tw)$detailed %>% 
     bind_rows(iot_op_plan(tw)$detailed) %>% 
     bind_rows(iot_fcast(tw)$detailed) %>% 
     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
   
   
   # consolidation
-  consolidated_iot_data <- iot_close_actuals(tw)$overview %>%
+  consolidated_data_iot <- iot_close_actuals(tw)$overview %>%
     bind_rows(iot_op_plan(tw)$overview) %>%
     bind_rows(iot_fcast  (tw)$overview) %>% 
     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
@@ -725,18 +725,20 @@ iot_products <- function(tw, q){
   ytd = ytd_output(tw)
   
   
-  overview = mtd %>%
+  overview_iot = mtd %>%
     left_join(qtd, by = "category") %>% 
     left_join(ytd, by = "category") %>% 
     mutate_if(is.numeric, round) %>% 
     relocate(.before = MTD_OP, MTD_VF) %>% 
     relocate(.before = QTD_OP, QTD_VF) %>% 
-    relocate(.before = YTD_OP, YTD_VF) 
+    relocate(.before = YTD_OP, YTD_VF) %>% 
+    separate(category, c("category", "vendor"),"-") %>% 
+    mutate_if(is.character, str_trim)
   
   
-  return(list(consolidated_data = consolidated_data,
-              detailed_data = detailed_data,
-              overview = overview))
+  return(list(consolidated_data_iot = consolidated_data_iot,
+              detailed_data_iot = detailed_data_iot,
+              overview_iot = overview_iot))
   
   
 }
