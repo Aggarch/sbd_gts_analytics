@@ -12,7 +12,8 @@ fiscalcal = openxlsx::read.xlsx("fiscalcal_2021.xlsx")
 
 fisCal = fiscalcal %>% 
   mutate(p0 = as.Date(p0, origin = "1899-12-30")) %>% 
-  mutate(p1 = as.Date(p1, origin = "1899-12-30"))
+  mutate(p1 = as.Date(p1, origin = "1899-12-30")) %>% 
+  mutate(p2 = p1 + 3)
 
 
 

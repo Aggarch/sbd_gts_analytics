@@ -159,7 +159,7 @@ collected <- ncb_fct_data%>%
 
 setwd(myDocs)
 
-target <- openxlsx::read.xlsx("non_cb_f9.xlsx") %>% 
+target <- openxlsx::read.xlsx("data/non_cb_f9.xlsx") %>% 
   as_tibble() %>% 
   janitor::clean_names() %>% 
   mutate(team = ifelse(is.na(team),"NA",team)) %>% 
