@@ -16,10 +16,9 @@ library(zoo)
 
 # Periodicity / A step forward in abstraction 4 Automation. 
 
-  fisCal
-  
-  tw    <- as.yearmon(today()%m-% months(1))
-  q     <- paste0("Q", quarter(today()))
+  fisCal <-   readRDS("fisCal.Rds")
+  tw     <-   as.yearmon(today()%m-% months(1))
+  q      <-   paste0("Q", quarter(today()))
  
 
 # datacc_da.xlsx_contrast.xlsx contains information updated for DA cost center, historical data YTD,
@@ -252,6 +251,14 @@ dp_fcast         <- function(tw){
 }
 
 
+# detailed 
+detailed_data     = dp_close_actuals(tw)$detailed %>% 
+                    bind_rows(dp_op_plan(tw)$detailed) %>% 
+                    bind_rows(dp_fcast(tw)$detailed) %>% 
+  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) 
+  
+
+
 # consolidation
 consolidated_data = dp_close_actuals(tw)$overview %>%
                     bind_rows(dp_op_plan(tw)$overview) %>%
@@ -369,6 +376,7 @@ overview = mtd %>%
   
 
 return(list(consolidated_data = consolidated_data,
+            detailed_data = detailed_data,
             overview = overview))
 
 
