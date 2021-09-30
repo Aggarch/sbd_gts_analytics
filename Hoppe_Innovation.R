@@ -2,6 +2,7 @@
 
 # Generalities ------------------------------------------------------------
 
+
 # SBD GTS FP&A TO Analytics, Kurt Hoppe Innovation. 
 
 
@@ -15,7 +16,9 @@ library(zoo)
 
 
 # Periodicity / A step forward in abstraction 4 Automation. 
-
+  
+  setwd("~/projects/sbd_gts_analytics")
+  
   fisCal <-   readRDS("fisCal.Rds")
   tw     <-   as.yearmon(today()%m-% months(1))
   q      <-   paste0("Q", quarter(today()))
@@ -274,6 +277,12 @@ consolidated_data = dp_close_actuals(tw)$overview %>%
 # data comming from SAP and Sharepoint. 
 
 
+
+# Rolling Windows ////////////////////////////////////////////////////////////
+
+
+
+
 # MTD
 mtd_output <- function(tw){ 
   
@@ -372,7 +381,10 @@ overview = mtd %>%
   mutate_if(is.numeric, round) %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
-  relocate(.before = YTD_OP, YTD_VF)
+  relocate(.before = YTD_OP, YTD_VF) %>% 
+  separate(category, c("category", "vendor"),"-") %>% 
+  mutate_if(is.character, str_trim)
+
   
 
 return(list(consolidated_data = consolidated_data,
@@ -384,8 +396,8 @@ return(list(consolidated_data = consolidated_data,
 
 # Produce the output and generate a visual 
 
-DA_table <- digital_products(tw, q)
-DA_table$overview %>% flextable::flextable()
+# DA_table <- digital_products(tw, q)
+# DA_table$overview %>% flextable::flextable()
 
 
 # with datacc_da.xlsx_contrast; deta values equals 1759594.74
@@ -408,10 +420,11 @@ DA_table$overview %>% flextable::flextable()
 
 # Final data product as UI Only possess 16 categories with PSD playing passive role.
 
-consolidated_iot_data <- function(tw){ 
+iot_products <- function(tw, q){
+  
   
   # ACTUALS 
-  iot_close_actuals <- function(tw){
+  iot_close_actuals     <- function(tw){
     
     # cost_centers_data.  
     ccdata <- openxlsx::read.xlsx("datacc_iot.xlsx", "hist_raw") %>% 
@@ -424,20 +437,20 @@ consolidated_iot_data <- function(tw){
     actuals <- ccdata %>%
       mutate(cost_element_name = ifelse(cost_element_name == "UTILITY TELEPHONE" & val_in_rep_cur > 5000,
                                         name_of_offsetting_account, cost_element_name)) %>%
+      
       mutate(cost_element_name = ifelse(cost_element_name == "UTILITY TELEPHONE" & val_in_rep_cur < -5000,
                                         name_of_offsetting_account, cost_element_name)) %>%
+      
       group_by(cost_element, cost_element_name, period) %>%
       summarise(val_in_rep_cur = sum(val_in_rep_cur), .groups = "drop") %>%
-      left_join(clearing, by = c("cost_element", "cost_element_name", "period")) %>%
       ungroup() %>%
-      replace_na(list(val_in_rep_cur = 0, clearing_account = 0)) %>%
+      replace_na(list(val_in_rep_cur = 0)) %>%
       mutate(period = as.numeric(period)) %>%
       mutate(date = make_date(year = year(today()),
                               month = period, day = 1L)) %>%
       mutate(period = as.yearmon(date)) %>%
       select(-date) %>%
       rename(actual = val_in_rep_cur) %>%
-      select(-clearing_account) %>%
       mutate(category =case_when(str_detect(cost_element_name,"EMP BEN")~"C&B",
                                  str_detect(cost_element_name,"PR TAXE")~"C&B",
                                  str_detect(cost_element_name,"WAGE")~"C&B",
@@ -502,18 +515,15 @@ consolidated_iot_data <- function(tw){
     
     
     return(list(raw_cc = ccdata,
-                fixed_assets = clearing,
                 actuals = actuals,
                 detailed = detailed,
-                # monthly = monthly, 
-                # quarterly = quarterly, 
                 overview = overview))
     
     
   }
   
   # OPlan
-  iot_op_plan  <- function(tw){ 
+  iot_op_plan           <- function(tw){ 
     
     # detailed
     
@@ -556,7 +566,7 @@ consolidated_iot_data <- function(tw){
   }
   
   # Forecast
-  iot_forecast <- function(tw){ 
+  iot_fcast             <- function(tw){ 
     
     # detailed
     detailed <- openxlsx::read.xlsx("datacc_iot.xlsx", "F7") %>% 
@@ -599,103 +609,80 @@ consolidated_iot_data <- function(tw){
     
   }
   
+  
+  
+  # detailed 
+  detailed_data         <- iot_close_actuals(tw)$detailed %>% 
+    bind_rows(iot_op_plan(tw)$detailed) %>% 
+    bind_rows(iot_fcast(tw)$detailed) %>% 
+    mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
+  
+  
   # consolidation
-  iot_actuals  = iot_close_actuals(tw)$overview
-  iot_forecast = iot_forecast(tw)$overview
-  iot_op       = iot_op_plan(tw)$overview
-  
-  
-  consolidated_iot_data = iot_actuals %>%
-    bind_rows(iot_op) %>%
-    bind_rows(iot_forecast) %>% 
-    relocate(.before = Q1, all_of(tw)) %>% 
+  consolidated_iot_data <- iot_close_actuals(tw)$overview %>%
+    bind_rows(iot_op_plan(tw)$overview) %>%
+    bind_rows(iot_fcast  (tw)$overview) %>% 
     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
     select(category, type, contains(month.abb),contains("Q"))
   
   
-  return(consolidated_iot_data)
   
-}
-
-
-iot_products <- function(period, quarter){ 
+  # Rolling Windows ////////////////////////////////////////////////////////////
   
-  data <- consolidated_iot_data(period)
+  
   
   # MTD
-  mtd_output <- function(period){ 
+  mtd_output            <- function(tw){ 
     
-    act = data %>% 
-      filter(type == "actuals") %>% 
-      select(category,
-             contains(all_of(period))) %>% 
-      rename(MTD_actuals = period)
-
-  
-    op = data %>% 
-      filter(type == "op") %>% 
-      select(category,
-             contains(all_of(period))) %>%
-      rename(MTD_OP = period) 
-    
-    
-    fcast = data %>% 
-      filter(type == "fcast") %>% 
-      select(category,
-             contains(all_of(period))) %>%
-      rename(MTD_forecast = period) 
-
-    
-    
-    MTD = op %>%
-      left_join(fcast, by = "category") %>%
-      left_join(act, by = "category") %>%
+    MTD= iot_fcast(tw)$detailed %>% 
+      bind_rows(iot_close_actuals(tw)$detailed) %>%
+      bind_rows(iot_op_plan(tw)$detailed) %>%
+      filter(period == tw) %>% 
+      select(category,type,value) %>% 
+      pivot_wider(names_from = type, 
+                  values_from = value,
+                  values_fn = sum) %>% 
+      rename(MTD_forecast = fcast,
+             MTD_actuals = actuals,
+             MTD_OP =op) %>% 
       select(category, MTD_actuals,MTD_forecast,MTD_OP) %>%
       mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
       mutate(MTD_actuals  = MTD_actuals/1000,
              MTD_forecast = MTD_forecast/1000,
              MTD_OP       = MTD_OP/1000) %>% 
       mutate(MTD_VF  = MTD_actuals-MTD_forecast,
-             MTD_VOP = MTD_actuals-MTD_OP)
-      # mutate_if(is.numeric, round)
+             MTD_VOP = MTD_actuals-MTD_OP) %>% 
+      mutate_if(is.numeric, round) 
+    
     
     return(MTD)
     
   }
   
   # QTD
-  qtd_output <- function(period, quarter){ 
+  qtd_output            <- function(tw, q){ 
     
-    act = data %>% 
-      filter(type == "actuals") %>% 
-      select(category,
-             contains(all_of(quarter))) %>% 
-      rename(QTD_actuals = quarter)
-    
-    op = data %>% 
-      filter(type == "op") %>% 
-      select(category,
-             contains(all_of(quarter))) %>%
-      rename(QTD_OP = quarter)
-    
-    fcast = data %>%
-      filter(type == "fcast") %>% 
-      select(category,
-             contains(all_of(quarter))) %>%
-      rename(QTD_forecast = quarter)
-    
-    
-    QTD = op %>%
-      left_join(fcast, by = "category") %>%
-      left_join(act, by = "category") %>%
+    QTD = iot_fcast(tw)$detailed %>% 
+      bind_rows(iot_close_actuals(tw)$detailed) %>%
+      bind_rows(iot_op_plan(tw)$detailed) %>%
+      filter(period <= tw) %>% 
+      filter(quarter == q) %>% 
+      select(category,type,value) %>% 
+      pivot_wider(names_from = type, 
+                  values_from = value,
+                  values_fn = sum) %>% 
+      rename(QTD_forecast = fcast,
+             QTD_actuals = actuals,
+             QTD_OP =op) %>% 
       select(category, QTD_actuals,QTD_forecast,QTD_OP) %>%
-      mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
+      mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
       mutate(QTD_actuals  = QTD_actuals/1000,
              QTD_forecast = QTD_forecast/1000,
              QTD_OP       = QTD_OP/1000) %>% 
       mutate(QTD_VF  = QTD_actuals-QTD_forecast,
-             QTD_VOP = QTD_actuals-QTD_OP) 
-
+             QTD_VOP = QTD_actuals-QTD_OP) %>% 
+      mutate_if(is.numeric, round) 
+    
     
     
     return(QTD)
@@ -703,51 +690,39 @@ iot_products <- function(period, quarter){
   }
   
   # YTD 
-  ytd_output <- function(period){ 
+  ytd_output            <- function(tw){ 
     
-    act = data %>% 
-      filter(type == "actuals") %>% 
-      select(!contains("Q"),-type) %>% 
-      mutate(ytd = rowSums(select(., -category))) %>% 
-      select(category, YTD_actuals = ytd)
-    
-    
-    op = data %>%
-      filter(type == "op") %>% 
-      select(!contains("Q"),-type) %>% 
-      mutate(ytd = rowSums(select(., -category))) %>% 
-      select(category, YTD_OP = ytd)
-    
-    
-    
-    fcast = data %>% 
-      filter(type == "fcast") %>% 
-      select(!contains("Q"),-type) %>% 
-      mutate(ytd = rowSums(select(., -category))) %>% 
-      select(category, YTD_forecast = ytd)
-    
-    
-    
-    YTD = op %>%
-      left_join(fcast, by = "category") %>%
-      left_join(act, by = "category") %>%
+    YTD = iot_fcast(tw)$detailed %>% 
+      bind_rows(iot_close_actuals(tw)$detailed) %>%
+      bind_rows(iot_op_plan(tw)$detailed) %>%
+      filter(period <= tw) %>% 
+      select(category,type,value) %>% 
+      pivot_wider(names_from = type, 
+                  values_from = value,
+                  values_fn = sum) %>% 
+      rename(YTD_forecast = fcast,
+             YTD_actuals = actuals,
+             YTD_OP =op) %>% 
       select(category, YTD_actuals,YTD_forecast,YTD_OP) %>%
-      mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
+      mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
       mutate(YTD_actuals  = YTD_actuals/1000,
              YTD_forecast = YTD_forecast/1000,
              YTD_OP       = YTD_OP/1000) %>% 
       mutate(YTD_VF  = YTD_actuals-YTD_forecast,
-             YTD_VOP = YTD_actuals-YTD_OP) 
+             YTD_VOP = YTD_actuals-YTD_OP) %>% 
+      mutate_if(is.numeric, round) 
     
     
     return(YTD)
     
   }
   
+  
+  
   # consolidation
-  mtd = mtd_output(period)
-  qtd = qtd_output(period, quarter)
-  ytd = ytd_output(period)
+  mtd = mtd_output(tw)
+  qtd = qtd_output(tw, q)
+  ytd = ytd_output(tw)
   
   
   overview = mtd %>%
@@ -756,10 +731,13 @@ iot_products <- function(period, quarter){
     mutate_if(is.numeric, round) %>% 
     relocate(.before = MTD_OP, MTD_VF) %>% 
     relocate(.before = QTD_OP, QTD_VF) %>% 
-    relocate(.before = YTD_OP, YTD_VF) %>% 
+    relocate(.before = YTD_OP, YTD_VF) 
   
   
-  return(overview)
+  return(list(consolidated_data = consolidated_data,
+              detailed_data = detailed_data,
+              overview = overview))
+  
   
 }
 
