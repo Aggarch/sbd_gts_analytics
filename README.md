@@ -3,9 +3,7 @@
 
 
 SBD GTS FP&A TO  "Stanlytics" : 
-
 <img src="https://mk0nixsensorcommcpqi.kinstacdn.com/wp-content/uploads/2018/04/Stanley-Black-Decker-logo.png">
-<img src="https://www.workfront.com/sites/default/files/2020-12/logo_stanley-black-decker_white%20%281%29.png" width="555" height="200">
 
 
 Cutting Edge Technology for Financial Data Science : 
