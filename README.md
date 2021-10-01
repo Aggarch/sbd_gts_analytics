@@ -8,8 +8,8 @@ Our Engine: Contribute to data democratization & financial literacy.
 <img src="https://mk0nixsensorcommcpqi.kinstacdn.com/wp-content/uploads/2018/04/Stanley-Black-Decker-logo.png">
 
 
-Cutting Edge Technology for Financial Data Science : 
+Cutting Edge Technology for Financial Data Science: 
 
 
 
-<img src="https://rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-White.png" width="200" height="50">
+<img src="https://rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-White.png" width="150" height="50">
