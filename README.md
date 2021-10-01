@@ -2,7 +2,7 @@
 # Stanley Black & Decker 
 
 
-SBD GTS FP&A TO  "Stanlytics" : 
+Transformation Office FP&A: 
 <img src="https://mk0nixsensorcommcpqi.kinstacdn.com/wp-content/uploads/2018/04/Stanley-Black-Decker-logo.png">
 
 
