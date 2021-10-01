@@ -12,4 +12,4 @@ Cutting Edge Technology for Financial Data Science :
 
 
 
-<img src="https://rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-White.png" width="300" height="100">
+<img src="https://rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-White.png" width="200" height="50">
