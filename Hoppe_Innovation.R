@@ -4,6 +4,7 @@
 
 
 # SBD GTS FP&A TO Analytics, Kurt Hoppe Innovation. 
+# Slanlytics 
 
 
 # DA XOR Digital Products Actuals automation;
@@ -58,13 +59,13 @@ digital_products <- function(tw, q){
 dp_close_actuals <- function(tw){
   
   # cost_centers_data.  
-  ccdata <- openxlsx::read.xlsx("datacc_da.xlsx", "hist_raw") %>% 
+  ccdata <- openxlsx::read.xlsx("datacc_da_contrast.xlsx", "hist_raw") %>% 
     as_tibble() %>%  janitor::clean_names()
   
   
   # fix_assets
   clearing <- ccdata %>% 
-    filter(grepl("FIXED ASSETS - C.I.P.", name_of_offsetting_account)) %>%
+    filter(grepl("C.I.P.", name_of_offsetting_account)) %>%
     select(cost_element, cost_element_name, period,val_in_rep_cur) %>%
     rename(clearing_account = val_in_rep_cur) %>% 
     distinct()
