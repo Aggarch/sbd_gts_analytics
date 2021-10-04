@@ -33,7 +33,7 @@ library(zoo)
 
 # Data Integration ::: Directly Sourced. 
 getwd()
-setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
+setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation/KSB1_RAW")
 
 
 
@@ -370,7 +370,6 @@ ytd = ytd_output(tw)
 overview_dp = mtd %>%
   left_join(qtd, by = "category") %>% 
   left_join(ytd, by = "category") %>% 
-  mutate_if(is.numeric, round) %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
@@ -709,7 +708,7 @@ iot_products <- function(tw, q){
   overview_iot = mtd %>%
     left_join(qtd, by = "category") %>% 
     left_join(ytd, by = "category") %>% 
-    mutate_if(is.numeric, round) %>% 
+    # mutate_if(is.numeric, round) %>% 
     relocate(.before = MTD_OP, MTD_VF) %>% 
     relocate(.before = QTD_OP, QTD_VF) %>% 
     relocate(.before = YTD_OP, YTD_VF) %>% 
@@ -762,8 +761,13 @@ hoppe_innovation_summary <- function(){
 
 DA_tables <- digital_products(tw, q) 
 IoT_tables <- iot_products(tw,q)
-hoppe_consolidation <- hoppe_innovation()
+hoppe_consolidation <- hoppe_innovation_summary()
 
+
+
+DA_tables  %>% openxlsx::write.xlsx(.,"../DA_TB.xlsx")
+IoT_tables %>% openxlsx::write.xlsx(.,"../IoT_TB.xlsx")
+hoppe_consolidation %>% openxlsx::write.xlsx(.,"../hoppe_consold.xlsx")
 
 
 
