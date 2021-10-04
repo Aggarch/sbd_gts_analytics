@@ -21,18 +21,14 @@ library(zoo)
   setwd("~/projects/sbd_gts_analytics")
   
   fisCal <-   readRDS("fisCal.Rds")
-  tw     <-   as.yearmon(today()%m-% months(1))
-  q      <-   paste0("Q", quarter(today()))
+  tw     <-   as.yearmon(today()%m-% months(1) %m-% days(3))
+  q      <-   paste0("Q", quarter(tw))
  
 
 # datacc_da.xlsx_contrast.xlsx contains information updated for DA cost center, historical data YTD,
 # raw data without any aditional analysis, new DA Data can be appendiced manually,
-# downloading the KSB1 report from SAP source for the corresponding cost center ID
-
-# C:/Users/AEG1130/Documents/data/datacc_da.xlsx.xlsx contains the historical data from 
-# (DA CC), Appendized data coming from last fiscal close SAPc11-KSB1, report. 
-
-
+# downloading the KSB1 report from SAP source for the corresponding cost center IDs
+# CCs for DA {221,225,226,227}
 
 
 # Data Integration ::: Directly Sourced. 
@@ -43,7 +39,6 @@ setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
 
 # DA Analysis  ------------------------------------------------------------
 
-# [[ datacc_da.xlsx OR contrast ]]
 
 # Returns the overview for actuals, OP and forecast.
 # detailed process into each function. 
@@ -59,7 +54,7 @@ digital_products <- function(tw, q){
 dp_close_actuals <- function(tw){
   
   # cost_centers_data.  
-  ccdata <- openxlsx::read.xlsx("datacc_da_contrast.xlsx", "hist_raw") %>% 
+  ccdata <- openxlsx::read.xlsx("datacc_da.xlsx", "hist_raw") %>% 
     as_tibble() %>%  janitor::clean_names()
   
   
@@ -384,19 +379,18 @@ overview_dp = mtd %>%
 
   
 
-return(list(consolidated_data_dp = consolidated_data,
+return(list(consolidated_data_dp = consolidated_data_dp,
             detailed_data_dp = detailed_data_dp,
             overview_dp = overview_dp))
 
 
 }
 
-DA_tables <- digital_products(tw, q) 
 
   
 
 # Function exec delivers the 3 outputs that can be combined and or visualize. 
-# DA_table$overview %>% flextable::flextable()
+# DA_tables$overview %>% flextable::flextable()
 
 
 
@@ -731,97 +725,44 @@ iot_products <- function(tw, q){
   
 }
 
-IoT_tables <- iot_products(tw,q)
 
 
 
 # Hoppe Consolidation ----------------------------------------------------
 
 
-hoppe_consol <-
-  DA_tables$overview_dp %>% 
-  bind_rows(IoT_tables$overview_iot) %>% 
-  group_by(category, vendor) %>% 
-  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
-  ungroup()
+hoppe_innovation_summary <- function(){ 
 
-
-hoppe_consol_resumen <- 
-  hoppe_consol %>% 
-  mutate(category = ifelse(str_detect(category,"PSD"),
-                           "Product Service Investment", category)) %>% 
-  group_by(category, vendor) %>% 
-  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
-  ungroup()
+  
+  hoppe_consol <-
+    DA_tables$overview_dp %>% 
+    bind_rows(IoT_tables$overview_iot) %>% 
+    group_by(category, vendor) %>% 
+    summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
+    ungroup()
   
   
+  hoppe_consol_resumen <- 
+    hoppe_consol %>% 
+    mutate(category = ifelse(str_detect(category,"PSD"),
+                             "Product Service Investment", category)) %>% 
+    group_by(category, vendor) %>% 
+    summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
+    ungroup()
   
+  
+  return(hoppe_consol_resumen)
+  
+  }
 
 
-DA  = "S:/North_America/Baltimore-BLT/Transformation Office/Admn/Digital Accelerator Reporting"
-setwd(DA)
-
-jul.da <- openxlsx::read.xlsx("07 Jul_DA_Close.xlsx") %>% as_tibble() %>%
-  janitor::clean_names()
-
-jul.da %>% 
-  # mutate(period = month.abb[as.numeric(period)]) %>% 
-  group_by(cost_center, period) %>% 
-  summarise(value = sum(val_in_rep_cur),.groups = "drop") %>%
-  pivot_wider(names_from = period, values_from = value) %>% 
-  mutate_if(is.integer, as.numeric) %>% 
-  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) 
+# Outputs Storage ---------------------------------------------------------
 
 
 
-jul.da %>% 
-  # mutate(period = month.abb[as.numeric(period)]) %>% 
-  group_by(cost_center, period) %>% 
-  summarise(n = n(),.groups = "drop") %>%
-  pivot_wider(names_from = period, values_from = n) %>% 
-  mutate_if(is.integer, as.numeric) %>% 
-  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))
-
-
-
-hoppe_consolidation <- function(){ 
-
-setwd("C:/Users/AEG1130/Documents/data")
-
-hoppe = openxlsx::read.xlsx("hoppe.xlsx") %>% as_tibble 
-
-consol_da = hoppe %>% 
-  group_by(Spend.Categories,Vendors, time_frame) %>% 
-  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
-  mutate(Spend.Categories = ifelse(str_detect(Spend.Categories,"PSD"),
-                                   "Product Service Investment",Spend.Categories)) %>% 
-  mutate(Spend.Categories = str_trim(Spend.Categories)) %>% 
-  pivot_wider(names_from = time_frame,
-              values_from = c(Actual, F07,VF07, OP, VOP),
-              values_fn = sum) %>% 
-  select(Spend.Categories, Vendors, contains("QTD"), contains("YTD")) %>% 
-  ungroup() %>%
-  arrange(desc(Actual_QTD))
-
-grouped_leader <- hoppe %>% 
-  group_by(Account, time_frame) %>% 
-  summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
-  pivot_wider(names_from = time_frame,
-              values_from = c("Actual", "F07", "VF07", "OP", "VOP")) %>% 
-  select(Account,contains("QTD"), everything()) %>% 
-  janitor::adorn_totals()
-
-
-return(list(details = consol_da ,
-            by_leader = grouped_leader
-       ))
-
-
-}
-
-
-hoppe_consolidation %>%
-  openxlsx::write.xlsx(.,"../hoppe_consol.xlsx", overwrite = T)
+DA_tables <- digital_products(tw, q) 
+IoT_tables <- iot_products(tw,q)
+hoppe_consolidation <- hoppe_innovation()
 
 
 
