@@ -747,14 +747,17 @@ iot_products <- function(tw, q){
   ytd = ytd_output(tw)
   
   
-  overview_iot = mtd %>%
+  overview_iot = ytd %>%
     left_join(qtd, by = "category") %>% 
-    left_join(ytd, by = "category") %>% 
+    left_join(mtd, by = "category") %>% 
     relocate(.before = MTD_OP, MTD_VF) %>% 
     relocate(.before = QTD_OP, QTD_VF) %>% 
     relocate(.before = YTD_OP, YTD_VF) %>% 
     separate(category, c("category", "vendor"),"-") %>% 
-    mutate_if(is.character, str_trim)
+    mutate_if(is.character, str_trim) %>% 
+    select(category, vendor, contains("MTD"),
+           contains("QTD"),
+           contains("YTD"))    
   
   
   
