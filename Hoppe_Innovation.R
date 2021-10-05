@@ -61,14 +61,28 @@ dp_close_actuals <- function(tw){
   ccdata <- openxlsx::read.xlsx("datacc_da.xlsx", "hist_raw") %>% 
     as_tibble() %>%  janitor::clean_names()
   
-  
+  samort <- openxlsx::read.xlsx("datacc_da.xlsx", "samort") %>% 
+    as_tibble() %>%  janitor::clean_names() %>% 
+    mutate(period = as.Date(period, origin = "1899-12-30")) %>% 
+    mutate(value = abs(value)) %>%
+    mutate(period = as.yearmon(period)) %>% 
+    mutate(category = "Software Amortization") %>% 
+    select(-cost_center) %>% 
+    unite("category", c(category, description), sep = " / ") %>% 
+    relocate(.before = period, value) %>% 
+    filter(period <= tw)
+    
+    
+    # mutate(period = lubridate::month(period))%>%
+    # pivot_wider(names_from = period, values_from = value, values_fn = sum) 
+   
+
   # fix_assets
   clearing <- ccdata %>% 
     filter(grepl("C.I.P.", name_of_offsetting_account)) %>%
     select(cost_element, cost_element_name, period,val_in_rep_cur) %>%
-    rename(clearing_account = val_in_rep_cur) %>% 
-    distinct()
-  
+    rename(clearing_account = val_in_rep_cur)
+
   
   # tidy_actuals.
   actuals <- ccdata %>%
@@ -114,7 +128,9 @@ dp_close_actuals <- function(tw){
   resumen_actuals <-  actuals %>%
     group_by(category, period) %>%
     summarise(gross = sum(gross),.groups="drop") %>% 
-    rename(value = gross)
+    rename(value = gross) %>% 
+    filter(!grepl("Softw",category)) %>% 
+    bind_rows(samort)
     
   
   
@@ -372,14 +388,31 @@ qtd = qtd_output(tw, q)
 ytd = ytd_output(tw)
 
 
-overview_dp = mtd %>%
+overview_samort = mtd %>%
   left_join(qtd, by = "category") %>% 
   left_join(ytd, by = "category") %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
+  filter(grepl("Software Amort",category)) %>% 
+  separate(category, c("category", "vendor"),"/") %>% 
+  mutate_if(is.character, str_trim)
+
+
+
+overview_all = mtd %>%
+  left_join(qtd, by = "category") %>% 
+  left_join(ytd, by = "category") %>% 
+  relocate(.before = MTD_OP, MTD_VF) %>% 
+  relocate(.before = QTD_OP, QTD_VF) %>% 
+  relocate(.before = YTD_OP, YTD_VF) %>% 
+  filter(!grepl("Softw",category)) %>% 
   separate(category, c("category", "vendor"),"-") %>% 
   mutate_if(is.character, str_trim)
+
+
+overview_dp = overview_all %>% 
+  bind_rows(overview_samort)
 
   
 
@@ -453,6 +486,14 @@ iot_products <- function(tw, q){
                                  str_detect(cost_element_name,"OS FEE GENERAL")~"IoT Cloud Service - AG Software",
                                  str_detect(cost_element_name,"MISC AC")~"Accrued",
                                  str_detect(cost_element_name,"ZIGATTA")~"ConsumerApp - Zigatta",
+                                 
+                                 str_detect(cost_element_name,"Software Engineering - INFOTECH Prism")~"Software Engineering - INFOTECH Prism",
+                                 str_detect(cost_element_name,"IoT Cloud Service - AG Software")~"IoT Cloud Service - AG Software",
+                                 str_detect(cost_element_name,"Cloud Usage and Support - AWS")~"Cloud Usage and Support - AWS",
+                                 str_detect(cost_element_name,"ConsumerApp - Zigatta")~"ConsumerApp - Zigatta",
+                                 
+                                 
+                                 
                                  TRUE ~ as.character("Others"))) %>%
       relocate(.before = cost_element, category )
     
@@ -472,11 +513,6 @@ iot_products <- function(tw, q){
       mutate(quarter = quarter(period)) %>% 
       mutate(quarter = paste0("Q",quarter)) %>% 
       mutate(type = "actuals") %>% 
-      
-      mutate(category = ifelse(category == "ConsumerApp - ZIGATTA" & period == "Aug 2021",
-                               "IoT Cloud Service - AG Software", category)
-      ) %>%
-      
       filter(period <= all_of(tw)) 
     
     
@@ -761,7 +797,7 @@ hoppe_innovation_summary <- function(){
 
 
 DA_tables <- digital_products(tw, q) 
-IoT_tables <- iot_products(tw,q)thanks
+IoT_tables <- iot_products(tw,q)
 hoppe_consolidation <- hoppe_innovation()
 
 DA_tables %>% openxlsx::write.xlsx(.,"DA_tables.xlsx")
