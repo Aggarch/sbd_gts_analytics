@@ -375,7 +375,6 @@ ytd = ytd_output(tw)
 overview_dp = mtd %>%
   left_join(qtd, by = "category") %>% 
   left_join(ytd, by = "category") %>% 
-  mutate_if(is.numeric, round) %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
@@ -712,7 +711,6 @@ iot_products <- function(tw, q){
   overview_iot = mtd %>%
     left_join(qtd, by = "category") %>% 
     left_join(ytd, by = "category") %>% 
-    mutate_if(is.numeric, round) %>% 
     relocate(.before = MTD_OP, MTD_VF) %>% 
     relocate(.before = QTD_OP, QTD_VF) %>% 
     relocate(.before = YTD_OP, YTD_VF) %>% 
@@ -763,7 +761,7 @@ hoppe_innovation_summary <- function(){
 
 
 DA_tables <- digital_products(tw, q) 
-IoT_tables <- iot_products(tw,q)
+IoT_tables <- iot_products(tw,q)thanks
 hoppe_consolidation <- hoppe_innovation()
 
 DA_tables %>% openxlsx::write.xlsx(.,"DA_tables.xlsx")
