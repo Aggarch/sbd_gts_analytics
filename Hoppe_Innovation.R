@@ -102,7 +102,7 @@ dp_close_actuals <- function(tw){
     rename(actual = val_in_rep_cur) %>%
     mutate(gross = actual - clearing_account) %>%
     mutate(category =case_when(str_detect(cost_element_name,"EMP BEN")~"C&B",
-                               str_detect(cost_element_name,"PR TAXE")~"C&B",
+                               str_detect(cost_element_name,"PR TAXES")~"C&B",
                                str_detect(cost_element_name,"WAGE")~"C&B",
                                str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
                                str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant",
@@ -129,7 +129,7 @@ dp_close_actuals <- function(tw){
     group_by(category, period) %>%
     summarise(gross = sum(gross),.groups="drop") %>% 
     rename(value = gross) %>% 
-    filter(!grepl("Softw",category)) %>% 
+    filter(!grepl("Software Amort",category)) %>% 
     bind_rows(samort)
     
   
@@ -316,9 +316,9 @@ mtd_output <- function(tw){
                MTD_OP =op) %>% 
         select(category, MTD_actuals,MTD_forecast,MTD_OP) %>%
         mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
-        mutate(MTD_actuals  = MTD_actuals/1000,
-               MTD_forecast = MTD_forecast/1000,
-               MTD_OP       = MTD_OP/1000) %>% 
+        mutate(MTD_actuals  = MTD_actuals/1,
+               MTD_forecast = MTD_forecast/1,
+               MTD_OP       = MTD_OP/1) %>% 
         mutate(MTD_VF  = MTD_actuals-MTD_forecast,
                MTD_VOP = MTD_actuals-MTD_OP) 
 
@@ -343,9 +343,9 @@ qtd_output <- function(tw, q){
            QTD_OP =op) %>% 
     select(category, QTD_actuals,QTD_forecast,QTD_OP) %>%
     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
-    mutate(QTD_actuals  = QTD_actuals/1000,
-           QTD_forecast = QTD_forecast/1000,
-           QTD_OP       = QTD_OP/1000) %>% 
+    mutate(QTD_actuals  = QTD_actuals/1,
+           QTD_forecast = QTD_forecast/1,
+           QTD_OP       = QTD_OP/1) %>% 
     mutate(QTD_VF  = QTD_actuals-QTD_forecast,
            QTD_VOP = QTD_actuals-QTD_OP) 
 
@@ -371,9 +371,9 @@ ytd_output <- function(tw){
            YTD_OP =op) %>% 
     select(category, YTD_actuals,YTD_forecast,YTD_OP) %>%
     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
-    mutate(YTD_actuals  = YTD_actuals/1000,
-           YTD_forecast = YTD_forecast/1000,
-           YTD_OP       = YTD_OP/1000) %>% 
+    mutate(YTD_actuals  = YTD_actuals/1,
+           YTD_forecast = YTD_forecast/1,
+           YTD_OP       = YTD_OP/1) %>% 
     mutate(YTD_VF  = YTD_actuals-YTD_forecast,
            YTD_VOP = YTD_actuals-YTD_OP) 
   
@@ -388,9 +388,9 @@ qtd = qtd_output(tw, q)
 ytd = ytd_output(tw)
 
 
-overview_samort = mtd %>%
+overview_samort = ytd %>%
   left_join(qtd, by = "category") %>% 
-  left_join(ytd, by = "category") %>% 
+  left_join(mtd, by = "category") %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
@@ -400,19 +400,22 @@ overview_samort = mtd %>%
 
 
 
-overview_all = mtd %>%
+overview_all = ytd %>%
   left_join(qtd, by = "category") %>% 
-  left_join(ytd, by = "category") %>% 
+  left_join(mtd, by = "category") %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
-  filter(!grepl("Softw",category)) %>% 
+  filter(!grepl("Software Amort",category)) %>% 
   separate(category, c("category", "vendor"),"-") %>% 
   mutate_if(is.character, str_trim)
 
 
 overview_dp = overview_all %>% 
-  bind_rows(overview_samort)
+  bind_rows(overview_samort) %>% 
+  select(category, vendor, contains("MTD"),
+                           contains("QTD"),
+                           contains("YTD"))
 
   
 
@@ -670,9 +673,9 @@ iot_products <- function(tw, q){
              MTD_OP =op) %>% 
       select(category, MTD_actuals,MTD_forecast,MTD_OP) %>%
       mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
-      mutate(MTD_actuals  = MTD_actuals/1000,
-             MTD_forecast = MTD_forecast/1000,
-             MTD_OP       = MTD_OP/1000) %>% 
+      mutate(MTD_actuals  = MTD_actuals/1,
+             MTD_forecast = MTD_forecast/1,
+             MTD_OP       = MTD_OP/1) %>% 
       mutate(MTD_VF  = MTD_actuals-MTD_forecast,
              MTD_VOP = MTD_actuals-MTD_OP) 
 
@@ -698,9 +701,9 @@ iot_products <- function(tw, q){
              QTD_OP =op) %>% 
       select(category, QTD_actuals,QTD_forecast,QTD_OP) %>%
       mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
-      mutate(QTD_actuals  = QTD_actuals/1000,
-             QTD_forecast = QTD_forecast/1000,
-             QTD_OP       = QTD_OP/1000) %>% 
+      mutate(QTD_actuals  = QTD_actuals/1,
+             QTD_forecast = QTD_forecast/1,
+             QTD_OP       = QTD_OP/1) %>% 
       mutate(QTD_VF  = QTD_actuals-QTD_forecast,
              QTD_VOP = QTD_actuals-QTD_OP) 
     
@@ -725,9 +728,9 @@ iot_products <- function(tw, q){
              YTD_OP =op) %>% 
       select(category, YTD_actuals,YTD_forecast,YTD_OP) %>%
       mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%  
-      mutate(YTD_actuals  = YTD_actuals/1000,
-             YTD_forecast = YTD_forecast/1000,
-             YTD_OP       = YTD_OP/1000) %>% 
+      mutate(YTD_actuals  = YTD_actuals/1,
+             YTD_forecast = YTD_forecast/1,
+             YTD_OP       = YTD_OP/1) %>% 
       mutate(YTD_VF  = YTD_actuals-YTD_forecast,
              YTD_VOP = YTD_actuals-YTD_OP) 
 
@@ -799,6 +802,7 @@ hoppe_innovation_summary <- function(){
 DA_tables <- digital_products(tw, q) 
 IoT_tables <- iot_products(tw,q)
 hoppe_consolidation <- hoppe_innovation()
+
 
 DA_tables %>% openxlsx::write.xlsx(.,"DA_tables.xlsx")
 IoT_tables %>% openxlsx::write.xlsx(.,"IoT_tables.xlsx")
