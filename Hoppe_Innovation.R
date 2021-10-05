@@ -36,6 +36,10 @@ getwd()
 setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation/KSB1_RAW")
 
 
+# For accruals, go directly to the data source, identify them and change the Name of the offsetting account. 
+
+
+
 
 # DA Analysis  ------------------------------------------------------------
 
@@ -88,6 +92,7 @@ dp_close_actuals <- function(tw){
                                str_detect(cost_element_name,"WAGE")~"C&B",
                                str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
                                str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant",
+                               str_detect(cost_element_name,"OS FEE GENERAL")~"Services Fees - Cambridge",
                                str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
                                str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
                                str_detect(cost_element_name,"RENT BUILD")~"Rent",
@@ -447,7 +452,7 @@ iot_products <- function(tw, q){
                                  str_detect(cost_element_name,"T&E")~"T&E",
                                  str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
                                  str_detect(cost_element_name,"OS FEE GENERAL")~"IoT Cloud Service - AG Software",
-                                 str_detect(cost_element_name,"MISC AC")~"ConsumerApp - Zigatta",
+                                 str_detect(cost_element_name,"MISC AC")~"Accrued",
                                  str_detect(cost_element_name,"ZIGATTA")~"ConsumerApp - Zigatta",
                                  TRUE ~ as.character("Others"))) %>%
       relocate(.before = cost_element, category )
