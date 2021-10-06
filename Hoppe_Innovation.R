@@ -104,7 +104,8 @@ dp_close_actuals <- function(tw){
     mutate(category =case_when(str_detect(cost_element_name,"EMP BEN")~"C&B",
                                str_detect(cost_element_name,"PR TAXES")~"C&B",
                                str_detect(cost_element_name,"WAGE")~"C&B",
-                               str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
+                               # str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
+                               str_detect(cost_element_name,"DEMO")~"Demo Tools",
                                str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant",
                                str_detect(cost_element_name,"OS FEE GENERAL")~"Services Fees - Cambridge",
                                str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
@@ -436,7 +437,6 @@ return(list(consolidated_data_dp = consolidated_data_dp,
 
 # IoT Analysis -----------------------------------------------------------
 
-# [[ datacc_iot.xlsx ]]
 
 # As well as dp, KSB1 c11 SAP it's the source. 
 # cost of element name, equals the pivot table at IoT sheet, its just re-arranged
@@ -479,7 +479,8 @@ iot_products <- function(tw, q){
       mutate(category =case_when(str_detect(cost_element_name,"EMP BEN")~"C&B",
                                  str_detect(cost_element_name,"PR TAXE")~"C&B",
                                  str_detect(cost_element_name,"WAGE")~"C&B",
-                                 str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
+                                 # str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
+                                 str_detect(cost_element_name,"DEMO")~"Demo Tools",
                                  str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
                                  str_detect(cost_element_name,"RENT BUILD")~"Rent",
                                  str_detect(cost_element_name,"AMORTIZ SOFTW")~"Software Amortization",
@@ -773,13 +774,14 @@ iot_products <- function(tw, q){
 
 # Hoppe Consolidation ----------------------------------------------------
 
+# melts DA + IoT data & summarize 
 
 hoppe_innovation <- function(){ 
 
   
   hoppe_consol <-
-    DA_tables$overview_dp %>% 
-    bind_rows(IoT_tables$overview_iot) %>% 
+    digital_products(tw,q)$overview_dp %>% 
+    bind_rows(iot_products(tw,q)$overview_iot) %>% 
     group_by(category, vendor) %>% 
     summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
     ungroup()
@@ -797,6 +799,9 @@ hoppe_innovation <- function(){
   return(hoppe_consol_resumen)
   
   }
+
+
+
 
 
 # Outputs Storage & Execution----------------------------------------------
