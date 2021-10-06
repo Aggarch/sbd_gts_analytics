@@ -286,6 +286,8 @@ consolidated_data_dp <- dp_close_actuals(tw)$overview %>%
   mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
   select(category, type, contains(month.abb),contains("Q"))
 
+# raw_data
+
 
 # Returns the final table with the overview by time window
 # details about algorithm insight each function embeed.
@@ -487,7 +489,6 @@ iot_products <- function(tw, q){
                                  str_detect(cost_element_name,"T&E")~"T&E",
                                  str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
                                  str_detect(cost_element_name,"OS FEE GENERAL")~"IoT Cloud Service - AG Software",
-                                 str_detect(cost_element_name,"MISC AC")~"Accrued",
                                  str_detect(cost_element_name,"ZIGATTA")~"ConsumerApp - Zigatta",
                                  
                                  str_detect(cost_element_name,"Software Engineering - INFOTECH Prism")~"Software Engineering - INFOTECH Prism",
@@ -773,7 +774,7 @@ iot_products <- function(tw, q){
 # Hoppe Consolidation ----------------------------------------------------
 
 
-hoppe_innovation_summary <- function(){ 
+hoppe_innovation <- function(){ 
 
   
   hoppe_consol <-
@@ -798,19 +799,51 @@ hoppe_innovation_summary <- function(){
   }
 
 
-# Outputs Storage ---------------------------------------------------------
+# Outputs Storage & Execution----------------------------------------------
 
 
+final_report_hoppe <- function(){ 
+  
+  
+  
+# RAW
+  raw_da  <- dp_close_actuals(tw)$raw_cc
+  raw_iot <- iot_close_actuals(tw)$raw_cc
+  
+# Cross Tibbles
+  
+  DA_cross  <- digital_products(tw, q)$consolidated_data_dp
+  IoT_cross <- iot_products(tw, q)$consolidated_data_iot
+  
+  
+# Overview
+  DA_slide  <- digital_products(tw, q)$overview_dp
+  IoT_slide <- iot_products(tw, q)$overview_iot
+  
+  
+# Consolidation
+  Hoppe_consol <- hoppe_innovation()
+  
+  
+  
+  
+  return(list(raw_da    = raw_da,
+              raw_iot   = raw_iot,
+              DA_cross  = DA_cross,
+              IoT_cross = IoT_cross,
+              DA_slide  = DA_slide,
+              IoT_slide = IoT_slide,
+              Hoppe_consol = Hoppe_consol))
 
-DA_tables <- digital_products(tw, q) 
-IoT_tables <- iot_products(tw,q)
-hoppe_consolidation <- hoppe_innovation()
+}
 
 
-DA_tables %>% openxlsx::write.xlsx(.,"DA_tables.xlsx")
-IoT_tables %>% openxlsx::write.xlsx(.,"IoT_tables.xlsx")
-hoppe_consolidation %>% openxlsx::write.xlsx(.,"Hoppe_consol.xlsx")
+final_report_hoppe <- final_report_hoppe() 
+  
+setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
 
+openxlsx::write.xlsx(final_report_hoppe,
+                     paste0(tw,"_Hoppe Digital.xlsx"),overwrite = T)
 
 
 # Data Fcast Management ---------------------------------------------------
