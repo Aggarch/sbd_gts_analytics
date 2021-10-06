@@ -848,7 +848,7 @@ final_report_hoppe <- final_report_hoppe()
 setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
 
 openxlsx::write.xlsx(final_report_hoppe,
-                     paste0(tw,"_Hoppe Digital.xlsx"),overwrite = T)
+                     paste0(tw,"_Hoppe_Digital_Data.xlsx"),overwrite = T)
 
 
 # Data Fcast Management ---------------------------------------------------
