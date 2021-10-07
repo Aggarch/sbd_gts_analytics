@@ -16,7 +16,7 @@ TO             <- "S:/North_America/Baltimore-BLT/Transformation Office/Admn/TO 
 myDocs         <- "C:/Users/AEG1130/Documents"
 
 # Count heads for DA, IoT and TO 
-headCounter <- function(){
+headCounter    <- function(){
 
 setwd(hc_path)
 

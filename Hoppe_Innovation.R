@@ -66,11 +66,23 @@ dp_close_actuals <- function(tw){
     mutate(period = as.Date(period, origin = "1899-12-30")) %>% 
     mutate(value = abs(value)) %>%
     mutate(period = as.yearmon(period)) %>% 
-    mutate(category = "Software Amortization") %>% 
     select(-cost_center) %>% 
-    unite("category", c(category, description), sep = " / ") %>% 
+    mutate(s_description = case_when(str_detect(description,"Tool Connect")~"Tool Connect",
+                                     str_detect(description,"Connected Product Integration")~"Connected Product Integration",
+                                     str_detect(description,"Dewalt Connector")~"Dewalt Connector",
+                                     str_detect(description,"HTAS Enhancements")~"HTAS Enhancements",
+                                     str_detect(description,"LDMs")~"Laser Distance Measures",
+                                     str_detect(description,"PTE Enhancements")~"PTE Enhancements",
+                                     str_detect(description,"Rotary")~"Rotary Laser",
+                                     str_detect(description,"All Purpose Light")~"All Purpose Light",
+                                     str_detect(description,"Universal Serial")~"Universal Serial Number",
+                                     TRUE ~ as.character("Other projects"))) %>% 
+    mutate(category = "Software Amortization") %>% 
+    unite("category", c(category, s_description), sep = " - ") %>% 
     relocate(.before = period, value) %>% 
-    filter(period <= tw)
+    group_by(category, period) %>%
+    summarise(value = sum(value),.groups = "drop") %>% 
+    filter(period <= tw) 
     
     
     # mutate(period = lubridate::month(period))%>%
@@ -106,9 +118,9 @@ dp_close_actuals <- function(tw){
                                str_detect(cost_element_name,"WAGE")~"C&B",
                                # str_detect(cost_element_name,"DEMO")~"Demo Tools - FG Stock",
                                str_detect(cost_element_name,"DEMO")~"Demo Tools",
-                               str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant",
-                               str_detect(cost_element_name,"OS FEE GENERAL")~"Services Fees - Cambridge",
-                               str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
+                               str_detect(cost_element_name,"OS FEE LABOR")~"Professional Fees - Globant LLC",
+                               str_detect(cost_element_name,"OS FEE GENERAL")~"Services Fees - Cambridge Sharpe",
+                               # str_detect(cost_element_name,"PROMO SPECIAL P")~"Promo Services",
                                str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
                                str_detect(cost_element_name,"RENT BUILD")~"Rent",
                                str_detect(cost_element_name,"AMORTIZ SOFTW")~"Software Amortization",
@@ -119,7 +131,7 @@ dp_close_actuals <- function(tw){
                                str_detect(cost_element_name,"T&E")~"T&E",
                                str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
                                str_detect(cost_element_name,"EMP DEV SHOW EXHIBIT")~"Supplies",
-                               str_detect(cost_element_name,"HAMILTON MANU")~"Gyro Development - Didio",
+                               str_detect(cost_element_name,"HAMILTON MANU")~"Gyro Development - Didio Design",
                                TRUE ~ as.character("Others"))) %>%
     relocate(.before = cost_element, category )
 
@@ -391,31 +403,14 @@ qtd = qtd_output(tw, q)
 ytd = ytd_output(tw)
 
 
-overview_samort = ytd %>%
+overview_dp = ytd %>%
   left_join(qtd, by = "category") %>% 
   left_join(mtd, by = "category") %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
-  filter(grepl("Software Amort",category)) %>% 
-  separate(category, c("category", "vendor"),"/") %>% 
-  mutate_if(is.character, str_trim)
-
-
-
-overview_all = ytd %>%
-  left_join(qtd, by = "category") %>% 
-  left_join(mtd, by = "category") %>% 
-  relocate(.before = MTD_OP, MTD_VF) %>% 
-  relocate(.before = QTD_OP, QTD_VF) %>% 
-  relocate(.before = YTD_OP, YTD_VF) %>% 
-  filter(!grepl("Software Amort",category)) %>% 
   separate(category, c("category", "vendor"),"-") %>% 
-  mutate_if(is.character, str_trim)
-
-
-overview_dp = overview_all %>% 
-  bind_rows(overview_samort) %>% 
+  mutate_if(is.character, str_trim) %>% 
   select(category, vendor, contains("MTD"),
                            contains("QTD"),
                            contains("YTD"))
@@ -484,17 +479,19 @@ iot_products <- function(tw, q){
                                  str_detect(cost_element_name,"OS FEE RECRUIT")~"Recruiting",
                                  str_detect(cost_element_name,"RENT BUILD")~"Rent",
                                  str_detect(cost_element_name,"AMORTIZ SOFTW")~"Software Amortization",
-                                 str_detect(cost_element_name,"MATL PROTO")~"Cloud Usage and Support - AWS",
+                                 str_detect(cost_element_name,"MATL PROTO")~"Cloud Usage and Support - Amazon Web Services",
                                  str_detect(cost_element_name,"OS FEE LEGAL GEN")~"Supplies",
                                  str_detect(cost_element_name,"SUPPLIES")~"Supplies",
                                  str_detect(cost_element_name,"T&E")~"T&E",
                                  str_detect(cost_element_name,"UTILITY TELEP")~"Telephone",
-                                 str_detect(cost_element_name,"OS FEE GENERAL")~"IoT Cloud Service - AG Software",
+                                 str_detect(cost_element_name,"OS FEE GENERAL")~"IoT Cloud Service - Software AG",
                                  str_detect(cost_element_name,"ZIGATTA")~"ConsumerApp - Zigatta",
                                  
-                                 str_detect(cost_element_name,"Software Engineering - INFOTECH Prism")~"Software Engineering - INFOTECH Prism",
-                                 str_detect(cost_element_name,"IoT Cloud Service - AG Software")~"IoT Cloud Service - AG Software",
-                                 str_detect(cost_element_name,"Cloud Usage and Support - AWS")~"Cloud Usage and Support - AWS",
+                                 
+                                 # ON RAW - KSB1 inputted --- check uot reference file + Accruels Sharepoint :  
+                                 str_detect(cost_element_name,"Software Engineering - INFOTECH Prism")~"Software Engineering - Infotech Prism",
+                                 str_detect(cost_element_name,"IoT Cloud Service - AG Software")~"IoT Cloud Service - Software AG",
+                                 str_detect(cost_element_name,"Cloud Usage and Support - AWS")~"Cloud Usage and Support - Amazon Web Services",
                                  str_detect(cost_element_name,"ConsumerApp - Zigatta")~"ConsumerApp - Zigatta",
                                  
                                  
@@ -601,6 +598,10 @@ iot_products <- function(tw, q){
       as_tibble() %>%  janitor::clean_names() %>% 
       mutate(period = as.Date(period, 
                               origin = "1899-12-30")) %>% 
+      mutate(category = ifelse(str_detect(category,"PSD"),
+                               "Product Service Technology Upgrade", category)) %>%
+      group_by(category, period) %>% 
+      summarise(value = sum(value), .groups = "drop") %>% 
       mutate(period = as.yearmon(period)) %>% 
       mutate(quarter = quarter(period)) %>% 
       mutate(quarter = paste0("Q",quarter)) %>% 
@@ -790,7 +791,7 @@ hoppe_innovation <- function(){
   hoppe_consol_resumen <- 
     hoppe_consol %>% 
     mutate(category = ifelse(str_detect(category,"PSD"),
-                             "Product Service Investment", category)) %>% 
+                             "Product Service Technology Upgrade", category)) %>% 
     group_by(category, vendor) %>% 
     summarise_if(is.numeric, sum, na.rm = TRUE) %>% 
     ungroup()
@@ -843,60 +844,60 @@ final_report_hoppe <- function(){
 }
 
 
-final_report_hoppe <- final_report_hoppe() 
+final_report_hoppe_output <- final_report_hoppe() 
   
 setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
 
-openxlsx::write.xlsx(final_report_hoppe,
+openxlsx::write.xlsx(final_report_hoppe_output,
                      paste0(tw,"_Hoppe_Digital_Data.xlsx"),overwrite = T)
 
 
 # Data Fcast Management ---------------------------------------------------
 
 # re-populate Forecast with delivered close report actuals 
-
-refresh.fcast.data_da <- function(tw){ 
-  
-  
-  # Close actuals
-  closed.data  <-  DA_table %>%
-    select(category, MTD_actuals) %>%
-    rename(value  = MTD_actuals) %>% 
-    mutate(period = tw) %>% 
-    relocate(.before = value, period)
-  
-  
-  # Refreshin forecast 
-  current.fcast <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
-    as_tibble() %>%  janitor::clean_names() %>% 
-    mutate(period = as.Date(period, origin = "1899-12-30")) %>% 
-    mutate(period = as.yearmon(period)) %>% 
-    mutate(period = as.character(period)) %>% 
-    filter(period != tw)
-  
-  
-  
-  # Update forecast 
-  updated.fcast <- current.fcast %>%
-    bind_rows(closed.data) %>% 
-    mutate(period = as.yearmon(period))
-  
-  
-  
-  # File Management :::
-  wb <- openxlsx::loadWorkbook("datacc_da.xlsx")
-  
-  addWorksheet(wb,"Fcast")
-    writeDataTable(wb, sheet = "Fcast", updated.fcast)
-      removeWorksheet(wb, "F7")
-        renameWorksheet(wb, "Fcast", "F7")
-          saveWorkbook(wb,"datacc_da.xlsx",overwrite = T)
-  
-  
-  print("updated 100%")
-  
-}
-
+# 
+# refresh.fcast.data_da <- function(tw){ 
+#   
+#   
+#   # Close actuals
+#   closed.data  <-  DA_table %>%
+#     select(category, MTD_actuals) %>%
+#     rename(value  = MTD_actuals) %>% 
+#     mutate(period = tw) %>% 
+#     relocate(.before = value, period)
+#   
+#   
+#   # Refreshin forecast 
+#   current.fcast <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
+#     as_tibble() %>%  janitor::clean_names() %>% 
+#     mutate(period = as.Date(period, origin = "1899-12-30")) %>% 
+#     mutate(period = as.yearmon(period)) %>% 
+#     mutate(period = as.character(period)) %>% 
+#     filter(period != tw)
+#   
+#   
+#   
+#   # Update forecast 
+#   updated.fcast <- current.fcast %>%
+#     bind_rows(closed.data) %>% 
+#     mutate(period = as.yearmon(period))
+#   
+#   
+#   
+#   # File Management :::
+#   wb <- openxlsx::loadWorkbook("datacc_da.xlsx")
+#   
+#   addWorksheet(wb,"Fcast")
+#     writeDataTable(wb, sheet = "Fcast", updated.fcast)
+#       removeWorksheet(wb, "F7")
+#         renameWorksheet(wb, "Fcast", "F7")
+#           saveWorkbook(wb,"datacc_da.xlsx",overwrite = T)
+#   
+#   
+#   print("updated 100%")
+#   
+# }
+# 
 
 
 
