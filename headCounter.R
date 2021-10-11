@@ -45,12 +45,16 @@ read_actuals_hc <- function(files, sheets, period){
     slice(-1) %>% 
     as_tibble() %>% 
     select(name, work_location_name, job_code_description, 
-           employee_status, business_unit_desc, gl_cost_center) %>% 
+           employee_status,ee_number = hr_empl_id, 
+           business_unit_desc, gl_cost_center) %>% 
     
-    filter(gl_cost_center %in% c("9401500226","9401500233","9401500230")) %>% 
+    filter(gl_cost_center %in% c("9401500226","9401500225","9401500227","9401500221",
+                                 "9401500233",
+                                 "9401500230")) %>% 
     
-    mutate(cost_center = case_when(gl_cost_center == "9401500230"~"TO",
-                                   gl_cost_center == "9401500226"~"DA",
+    mutate(cost_center = case_when(
+                                   gl_cost_center %in% c("9401500226","9401500225","9401500227","9401500221") ~"DA",
+                                   gl_cost_center == "9401500230"~"TO",
                                    gl_cost_center == "9401500233"~"IoT")) %>% 
     mutate(period = period)
     
@@ -108,6 +112,44 @@ return(list(consolid_hc = consolid_hc,
 
 
 heads = headCounter()
+
+
+setwd(myDocs) 
+
+
+
+# heads_actuals -----------------------------------------------------------
+
+
+actuals_cb = heads$consolid_hc %>% 
+  filter(year_month == "Sep 2021") %>% 
+  select(name, work_location_name , year_month,
+         job_code_description, ee_number, cost_center)
+
+adp_report = openxlsx::read.xlsx("adp_report.xlsx") %>% 
+  as_tibble %>% 
+  janitor::clean_names() %>% 
+  filter(earning_code == "Regular") %>% 
+  mutate(date = as.Date(date, origin = "1899-12-30")) %>%
+  group_by(ee_number) %>% 
+  summarise(sept_regular = sum(earnings))
+
+
+actuals_cb_estim = actuals_cb %>%
+  left_join(adp_report, by = "ee_number") %>% 
+  mutate(year_estimate = (sept_regular*12))
+
+
+
+
+actuals_cb_estim %>% openxlsx::write.xlsx(.,"heads_cc.xlsx",overwrite = T)
+
+
+
+
+# queries -----------------------------------------------------------------
+
+
 
 
 setwd(DA)

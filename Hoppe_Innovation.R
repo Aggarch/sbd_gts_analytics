@@ -77,8 +77,8 @@ dp_close_actuals <- function(tw){
                                      str_detect(description,"All Purpose Light")~"All Purpose Light",
                                      str_detect(description,"Universal Serial")~"Universal Serial Number",
                                      TRUE ~ as.character("Other projects"))) %>% 
-    mutate(category = "Software Amortization") %>% 
-    unite("category", c(category, s_description), sep = " - ") %>% 
+    mutate(category = "Soft.Amort") %>% 
+    unite("category", c(category, s_description), sep = " / ") %>% 
     relocate(.before = period, value) %>% 
     group_by(category, period) %>%
     summarise(value = sum(value),.groups = "drop") %>% 
@@ -413,7 +413,8 @@ overview_dp = ytd %>%
   mutate_if(is.character, str_trim) %>% 
   select(category, vendor, contains("MTD"),
                            contains("QTD"),
-                           contains("YTD"))
+                           contains("YTD")) %>% 
+  mutate(category = str_replace_all(category, "/"," - "))
 
   
 
@@ -489,8 +490,8 @@ iot_products <- function(tw, q){
                                  
                                  
                                  # ON RAW - KSB1 inputted --- check uot reference file + Accruels Sharepoint :  
-                                 str_detect(cost_element_name,"Software Engineering - INFOTECH Prism")~"Software Engineering - Infotech Prism",
-                                 str_detect(cost_element_name,"IoT Cloud Service - AG Software")~"IoT Cloud Service - Software AG",
+                                 str_detect(cost_element_name,"Software Engineering - Infotech Prism")~"Software Engineering - Infotech Prism",
+                                 str_detect(cost_element_name,"IoT Cloud Service - Software AG")~"IoT Cloud Service - Software AG",
                                  str_detect(cost_element_name,"Cloud Usage and Support - AWS")~"Cloud Usage and Support - Amazon Web Services",
                                  str_detect(cost_element_name,"ConsumerApp - Zigatta")~"ConsumerApp - Zigatta",
                                  
@@ -851,6 +852,10 @@ setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
 openxlsx::write.xlsx(final_report_hoppe_output,
                      paste0(tw,"_Hoppe_Digital_Data.xlsx"),overwrite = T)
 
+
+# Others 
+iot_close_actuals(tw)$actuals %>% filter(category == "Others") %>% janitor::adorn_totals()
+dp_close_actuals(tw)$actuals  %>% filter(category == "Others") %>% janitor::adorn_totals()
 
 # Data Fcast Management ---------------------------------------------------
 
