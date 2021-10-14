@@ -859,6 +859,34 @@ dp_close_actuals(tw)$actuals  %>% filter(category == "Others") %>% janitor::ador
 
 # Data Fcast Management ---------------------------------------------------
 
+
+# from actuals to forecast of next p 
+
+da.act <- digital_products(tw,q)$consolidated_data_dp
+
+da.act %>% 
+  filter(type == "actuals") %>%
+  select(!contains("Q"), -type) %>% 
+  pivot_longer(!category, names_to = "period",
+                          values_to = "value")
+
+
+
+daften = openxlsx::read.xlsx("f9.xlsx","DA.F10") %>% as_tibble() %>% select(-PO) %>% 
+  pivot_longer(!category, names_to = "period", values_to = "value") %>% 
+  mutate(period = as.numeric(period)) %>% 
+  mutate(period = as.Date(period, origin = "1899-12-30"))%>% 
+  mutate(period = as.yearmon(period))
+
+
+iot.act <- iot_products(tw,q)$consolidated_data_iot
+
+iot.act %>% 
+  filter(type == "actuals") %>%
+  select(!contains("Q"), -type) %>% 
+  pivot_longer(!category, names_to = "period",
+               values_to = "value")
+
 # re-populate Forecast with delivered close report actuals 
 # 
 # refresh.fcast.data_da <- function(tw){ 

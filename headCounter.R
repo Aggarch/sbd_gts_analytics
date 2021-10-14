@@ -129,10 +129,10 @@ actuals_cb = heads$consolid_hc %>%
 adp_report = openxlsx::read.xlsx("adp_report.xlsx") %>% 
   as_tibble %>% 
   janitor::clean_names() %>% 
-  filter(earning_code == "Regular") %>% 
   mutate(date = as.Date(date, origin = "1899-12-30")) %>%
-  group_by(ee_number) %>% 
-  summarise(sept_regular = sum(earnings))
+   # filter(earning_code == "Regular") %>% 
+    group_by(ee_number) %>% 
+    summarise(sept_regular = sum(earnings))
 
 
 actuals_cb_estim = actuals_cb %>%
@@ -142,19 +142,15 @@ actuals_cb_estim = actuals_cb %>%
 
 
 
-actuals_cb_estim %>% openxlsx::write.xlsx(.,"heads_cc.xlsx",overwrite = T)
-
+actuals_cb_estim %>% 
+  openxlsx::write.xlsx(.,"heads_cc.xlsx",overwrite = T)
 
 
 
 # queries -----------------------------------------------------------------
 
 
-
-
 setwd(DA)
-
-
 
 heads %>% 
 openxlsx::write.xlsx(.,"headcounter.xlsx", overwrite = T)
@@ -171,7 +167,7 @@ aug %>% anti_join(all, by="name")
 
 
 
-# # HeadCount Report  -----------------------------------------------------
+# # HeadCount Report NESTOR  -----------------------------------------------------
 
 
 setwd(consolidations)
