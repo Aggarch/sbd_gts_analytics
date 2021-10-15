@@ -78,7 +78,7 @@ dp_close_actuals <- function(tw){
                                      str_detect(description,"Universal Serial")~"Universal Serial Number",
                                      TRUE ~ as.character("Other projects"))) %>% 
     mutate(category = "Soft.Amort") %>% 
-    unite("category", c(category, s_description), sep = " / ") %>% 
+    unite("category", c(category, s_description), sep = "/") %>% 
     relocate(.before = period, value) %>% 
     group_by(category, period) %>%
     summarise(value = sum(value),.groups = "drop") %>% 
@@ -414,7 +414,7 @@ overview_dp = ytd %>%
   select(category, vendor, contains("MTD"),
                            contains("QTD"),
                            contains("YTD")) %>% 
-  mutate(category = str_replace_all(category, "/"," - "))
+  mutate(category = str_replace_all(category, "/","-"))
 
   
 
@@ -872,7 +872,7 @@ da.act %>%
 
 
 
-daften = openxlsx::read.xlsx("f9.xlsx","DA.F10") %>% as_tibble() %>% select(-PO) %>% 
+daften = openxlsx::read.xlsx("f10.xlsx","DA.F10") %>% as_tibble() %>% select(-PO) %>% 
   pivot_longer(!category, names_to = "period", values_to = "value") %>% 
   mutate(period = as.numeric(period)) %>% 
   mutate(period = as.Date(period, origin = "1899-12-30"))%>% 
@@ -886,6 +886,13 @@ iot.act %>%
   select(!contains("Q"), -type) %>% 
   pivot_longer(!category, names_to = "period",
                values_to = "value")
+
+
+iotften = openxlsx::read.xlsx("f10.xlsx","IOT.F10") %>% as_tibble() %>% 
+  pivot_longer(!category, names_to = "period", values_to = "value") %>% 
+  mutate(period = as.numeric(period)) %>% 
+  mutate(period = as.Date(period, origin = "1899-12-30"))%>% 
+  mutate(period = as.yearmon(period))
 
 # re-populate Forecast with delivered close report actuals 
 # 

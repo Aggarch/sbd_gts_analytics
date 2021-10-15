@@ -130,14 +130,14 @@ adp_report = openxlsx::read.xlsx("adp_report.xlsx") %>%
   as_tibble %>% 
   janitor::clean_names() %>% 
   mutate(date = as.Date(date, origin = "1899-12-30")) %>%
-   # filter(earning_code == "Regular") %>% 
-    group_by(ee_number) %>% 
+    group_by(ee_number, earning_code) %>% 
     summarise(sept_regular = sum(earnings))
 
 
 actuals_cb_estim = actuals_cb %>%
   left_join(adp_report, by = "ee_number") %>% 
-  mutate(year_estimate = (sept_regular*12))
+  # filter(earning_code == "Regular") %>% 
+    mutate(year_estimate = (sept_regular*12))
 
 
 
