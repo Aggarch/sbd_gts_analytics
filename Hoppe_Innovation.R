@@ -316,7 +316,7 @@ consolidated_data_dp <- dp_close_actuals(tw)$overview %>%
 
 
 # MTD
-mtd_output <- function(tw){ 
+mtd_output_da <- function(tw){ 
   
   MTD= dp_fcast(tw)$detailed %>% 
        bind_rows(dp_close_actuals(tw)$detailed) %>%
@@ -342,7 +342,7 @@ return(MTD)
 }
 
 # QTD
-qtd_output <- function(tw, q){ 
+qtd_output_da <- function(tw, q){ 
   
   QTD = dp_fcast(tw)$detailed %>% 
     bind_rows(dp_close_actuals(tw)$detailed) %>%
@@ -371,7 +371,7 @@ qtd_output <- function(tw, q){
 }
 
 # YTD 
-ytd_output <- function(tw){ 
+ytd_output_da <- function(tw){ 
   
   YTD = dp_fcast(tw)$detailed %>% 
     bind_rows(dp_close_actuals(tw)$detailed) %>%
@@ -398,14 +398,14 @@ ytd_output <- function(tw){
 
 
 # consolidation
-mtd = mtd_output(tw)
-qtd = qtd_output(tw, q)
-ytd = ytd_output(tw)
+mtd_da = mtd_output_da(tw)
+qtd_da = qtd_output_da(tw, q)
+ytd_da = ytd_output_da(tw)
 
 
-overview_dp = ytd %>%
-  left_join(qtd, by = "category") %>% 
-  left_join(mtd, by = "category") %>% 
+overview_dp = ytd_da %>%
+  left_join(qtd_da, by = "category") %>% 
+  left_join(mtd_da, by = "category") %>% 
   relocate(.before = MTD_OP, MTD_VF) %>% 
   relocate(.before = QTD_OP, QTD_VF) %>% 
   relocate(.before = YTD_OP, YTD_VF) %>% 
@@ -662,7 +662,7 @@ iot_products <- function(tw, q){
   
   
   # MTD
-  mtd_output            <- function(tw){ 
+  mtd_output_iot            <- function(tw){ 
     
     MTD= iot_fcast(tw)$detailed %>% 
       bind_rows(iot_close_actuals(tw)$detailed) %>%
@@ -689,7 +689,7 @@ iot_products <- function(tw, q){
   }
   
   # QTD
-  qtd_output            <- function(tw, q){ 
+  qtd_output_iot            <- function(tw, q){ 
     
     QTD = iot_fcast(tw)$detailed %>% 
       bind_rows(iot_close_actuals(tw)$detailed) %>%
@@ -717,7 +717,7 @@ iot_products <- function(tw, q){
   }
   
   # YTD 
-  ytd_output            <- function(tw){ 
+  ytd_output_iot            <- function(tw){ 
     
     YTD = iot_fcast(tw)$detailed %>% 
       bind_rows(iot_close_actuals(tw)$detailed) %>%
@@ -746,14 +746,14 @@ iot_products <- function(tw, q){
   
   
   # consolidation
-  mtd = mtd_output(tw)
-  qtd = qtd_output(tw, q)
-  ytd = ytd_output(tw)
+  mtd_iot = mtd_output_iot(tw)
+  qtd_iot = qtd_output_iot(tw, q)
+  ytd_iot = ytd_output_iot(tw)
   
   
-  overview_iot = ytd %>%
-    left_join(qtd, by = "category") %>% 
-    left_join(mtd, by = "category") %>% 
+  overview_iot = ytd_iot %>%
+    left_join(qtd_iot, by = "category") %>% 
+    left_join(mtd_iot, by = "category") %>% 
     relocate(.before = MTD_OP, MTD_VF) %>% 
     relocate(.before = QTD_OP, QTD_VF) %>% 
     relocate(.before = YTD_OP, YTD_VF) %>% 
