@@ -16,12 +16,18 @@ library(openxlsx)
 library(zoo)
 
 
+proj   <- "~/projects/sbd_gts_analytics"
+kh.out <- "C:/Users/AEG1130/Documents/data/hoppe_innovation"
+raw    <- "C:/Users/AEG1130/Documents/data/hoppe_innovation/KSB1_RAW"
+
+
+
 # Periodicity / A step forward in abstraction 4 Automation. 
-  
-  setwd("~/projects/sbd_gts_analytics")
+
+  setwd(proj)
   
   fisCal <-   readRDS("fisCal.Rds")
-  tw     <-   as.yearmon(today()%m-% months(1) %m-% days(3))
+  tw     <-   as.yearmon(today()%m-% months(1) %m-% days(25))
   q      <-   paste0("Q", quarter(tw))
  
 
@@ -32,12 +38,11 @@ library(zoo)
 
 
 # Data Integration ::: Directly Sourced. 
-getwd()
-setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation/KSB1_RAW")
+
+  setwd(raw)
 
 
 # For accruals, go directly to the data source, identify them and change the Name of the offsetting account. 
-
 
 
 
@@ -81,8 +86,8 @@ dp_close_actuals <- function(tw){
     unite("category", c(category, s_description), sep = "/") %>% 
     relocate(.before = period, value) %>% 
     group_by(category, period) %>%
-    summarise(value = sum(value),.groups = "drop") %>% 
-    filter(period <= tw) 
+    summarise(value = sum(value),.groups = "drop") 
+    # filter(period <= tw) 
     
     
     # mutate(period = lubridate::month(period))%>%
@@ -162,8 +167,8 @@ dp_close_actuals <- function(tw){
     mutate(period = as.yearmon(period)) %>% 
     mutate(quarter = quarter(period)) %>% 
     mutate(quarter = paste0("Q",quarter)) %>% 
-    mutate(type = "actuals") %>% 
-    filter(period <= all_of(tw)) 
+    mutate(type = "actuals") 
+    # filter(period <= all_of(tw)) 
 
   
   monthly <- detailed %>%
@@ -210,8 +215,8 @@ dp_op_plan       <- function(tw){
   mutate(period = as.yearmon(period)) %>% 
   mutate(quarter = quarter(period)) %>% 
   mutate(quarter = paste0("Q",quarter)) %>% 
-  mutate(type = "op") %>% 
-  filter(period <= all_of(tw))
+  mutate(type = "op") 
+  # filter(period <= all_of(tw))
   
 
   
@@ -245,15 +250,15 @@ return(list(
 dp_fcast         <- function(tw){ 
   
   # detailed
-  detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
+  detailed <- openxlsx::read.xlsx("datacc_da.xlsx", "FCAST") %>% 
     as_tibble() %>%  janitor::clean_names() %>% 
     mutate(period = as.Date(period,
                             origin = "1899-12-30")) %>%
     mutate(period = as.yearmon(period)) %>% 
     mutate(quarter = quarter(period)) %>% 
     mutate(quarter = paste0("Q",quarter)) %>% 
-    mutate(type = "fcast") %>%
-    filter(period <= all_of(tw))
+    mutate(type = "fcast") 
+    # filter(period <= all_of(tw))
   
   
   
@@ -515,8 +520,8 @@ iot_products <- function(tw, q){
       mutate(period = as.yearmon(period)) %>% 
       mutate(quarter = quarter(period)) %>% 
       mutate(quarter = paste0("Q",quarter)) %>% 
-      mutate(type = "actuals") %>% 
-      filter(period <= all_of(tw)) 
+      mutate(type = "actuals")  
+      # filter(period <= all_of(tw)) 
     
     
     monthly <- detailed %>%
@@ -560,8 +565,8 @@ iot_products <- function(tw, q){
       mutate(period = as.yearmon(period)) %>% 
       mutate(quarter = quarter(period)) %>% 
       mutate(quarter = paste0("Q",quarter)) %>% 
-      mutate(type = "op") %>% 
-      filter(period <= all_of(tw))
+      mutate(type = "op") 
+      # filter(period <= all_of(tw))
     
     
     # monthly
@@ -595,7 +600,7 @@ iot_products <- function(tw, q){
   iot_fcast             <- function(tw){ 
     
     # detailed
-    detailed <- openxlsx::read.xlsx("datacc_iot.xlsx", "F7") %>% 
+    detailed <- openxlsx::read.xlsx("datacc_iot.xlsx", "FCAST") %>% 
       as_tibble() %>%  janitor::clean_names() %>% 
       mutate(period = as.Date(period, 
                               origin = "1899-12-30")) %>% 
@@ -606,8 +611,8 @@ iot_products <- function(tw, q){
       mutate(period = as.yearmon(period)) %>% 
       mutate(quarter = quarter(period)) %>% 
       mutate(quarter = paste0("Q",quarter)) %>% 
-      mutate(type = "fcast") %>%
-      filter(period <= all_of(tw))
+      mutate(type = "fcast") 
+      # filter(period <= all_of(tw))
     
     
     
@@ -789,6 +794,8 @@ hoppe_innovation <- function(){
     ungroup()
   
   
+
+  
   hoppe_consol_resumen <- 
     hoppe_consol %>% 
     mutate(category = ifelse(str_detect(category,"PSD"),
@@ -804,8 +811,6 @@ hoppe_innovation <- function(){
 
 
 
-
-
 # Outputs Storage & Execution----------------------------------------------
 
 
@@ -817,8 +822,19 @@ final_report_hoppe <- function(){
   raw_da  <- dp_close_actuals(tw)$raw_cc
   raw_iot <- iot_close_actuals(tw)$raw_cc
   
-# Cross Tibbles
+
+# Detailed
+  detailed_dp  <- digital_products(tw,q)$detailed_data_dp %>% mutate(class = "DA")
+  detailed_iot <- iot_products(tw,q)$detailed_data_iot %>% mutate(class = "IoT")
   
+  detailed_dp_iot = detailed_dp %>% bind_rows(detailed_iot) %>% 
+  separate(category, c("main", "detail") ,sep = "/") %>% 
+  separate(main, c("category", "detail") ,sep = "-") %>% 
+  mutate_if(is.character, str_trim) %>% 
+  mutate(detail = ifelse(is.na(detail),category, detail))
+  
+    
+# Cross Tibbles
   DA_cross  <- digital_products(tw, q)$consolidated_data_dp
   IoT_cross <- iot_products(tw, q)$consolidated_data_iot
   
@@ -840,20 +856,68 @@ final_report_hoppe <- function(){
               IoT_cross = IoT_cross,
               DA_slide  = DA_slide,
               IoT_slide = IoT_slide,
-              Hoppe_consol = Hoppe_consol))
+              Hoppe_consol = Hoppe_consol,
+              detailed_dp_iot = detailed_dp_iot))
 
 }
+
+setwd(proj)
+source("hoppe_functions.R")
+setwd(raw)
 
 
 final_report_hoppe_output <- final_report_hoppe() 
   
-setwd("C:/Users/AEG1130/Documents/data/hoppe_innovation")
+
+
+final_report_hoppe_output %>% openxlsx::write.xlsx(.,"algo.output.oct.xlsx")
+
+
+
+# Back to the beginning, infinite Loop ------------------------------------
+
+
+original_perspective <- function(){ 
+
+da.act = final_report_hoppe_output$DA_cross %>% filter(type == "actuals")
+da.op = final_report_hoppe_output$DA_cross %>% filter(type == "op")
+da.fcast = final_report_hoppe_output$DA_cross %>% filter(type == "fcast")
+
+
+digital = da.act %>% 
+  left_join(da.op, by = "category") %>%
+  left_join(da.fcast,  by = "category")
+
+
+iot.act = final_report_hoppe_output$IoT_cross %>% filter(type == "actuals")
+iot.op = final_report_hoppe_output$IoT_cross %>% filter(type == "op")
+iot.fcast = final_report_hoppe_output$IoT_cross %>% filter(type == "fcast")
+
+
+iot = iot.act %>% 
+  left_join(iot.op, by = "category") %>%
+  left_join(iot.fcast,  by = "category")
+
+
+
+return(list(digital = digital,
+            iot = iot))
+
+}
+
+
+
+
+
+
+
+setwd(kh.out)
 
 openxlsx::write.xlsx(final_report_hoppe_output,
-                     paste0(tw,"_Hoppe_Digital_Data.xlsx"),overwrite = T)
+                     paste0(tw,"_dash.Hoppe_Digital_Data.xlsx"),overwrite = T)
 
 
-# Others 
+  # Others 
 iot_close_actuals(tw)$actuals %>% filter(category == "Others") %>% janitor::adorn_totals()
 dp_close_actuals(tw)$actuals  %>% filter(category == "Others") %>% janitor::adorn_totals()
 
@@ -908,7 +972,7 @@ iotften = openxlsx::read.xlsx("f10.xlsx","IOT.F10") %>% as_tibble() %>%
 #   
 #   
 #   # Refreshin forecast 
-#   current.fcast <- openxlsx::read.xlsx("datacc_da.xlsx", "F7") %>% 
+#   current.fcast <- openxlsx::read.xlsx("datacc_da.xlsx", "FCAST") %>% 
 #     as_tibble() %>%  janitor::clean_names() %>% 
 #     mutate(period = as.Date(period, origin = "1899-12-30")) %>% 
 #     mutate(period = as.yearmon(period)) %>% 
@@ -929,8 +993,8 @@ iotften = openxlsx::read.xlsx("f10.xlsx","IOT.F10") %>% as_tibble() %>%
 #   
 #   addWorksheet(wb,"Fcast")
 #     writeDataTable(wb, sheet = "Fcast", updated.fcast)
-#       removeWorksheet(wb, "F7")
-#         renameWorksheet(wb, "Fcast", "F7")
+#       removeWorksheet(wb, "FCAST")
+#         renameWorksheet(wb, "Fcast", "FCAST")
 #           saveWorkbook(wb,"datacc_da.xlsx",overwrite = T)
 #   
 #   

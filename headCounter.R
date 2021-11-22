@@ -173,7 +173,6 @@ aug %>% anti_join(all, by="name")
 setwd(consolidations)
 
 
-
 actuals_hc = openxlsx::read.xlsx("Consolidated Actuals.xlsx", "CB") %>% as_tibble %>% 
   select(!starts_with("F")) %>% 
   select(!contains("Q")) %>% 
