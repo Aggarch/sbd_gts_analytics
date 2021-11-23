@@ -16,7 +16,7 @@ DS_data         <- "C:/Users/AEG1130/Documents/DS_data"
 setwd(DS_data)
 
 
-# Extract -----------------------------------------------------------------
+get# Extract -----------------------------------------------------------------
 
 # Algo \ HsGet SmartView Queries using a tabular structure 4 transact_data
 # Dynamically create tibbles easy to debug or traceback 
@@ -25,6 +25,16 @@ setwd(DS_data)
 
 
 # MetaQuery ::: -----------------------------------------------------------
+
+
+
+calendar <- openxlsx::read.xlsx("DS_Simplif.xlsx", "calendar") %>% 
+  as_tibble() %>% 
+  mutate(Report.Date = as.Date(Report.Date,origin = "1899-12-30")) %>% 
+  mutate(Data.Date = as.Date(Data.Date,origin = "1899-12-30")) %>% 
+  mutate(quarter = quarter(Report.Date)) %>% 
+  mutate(quarter = paste0("Q",quarter)) %>% 
+  janitor::clean_names()
 
 
 meta_query <- function(){ 
@@ -42,12 +52,6 @@ tidy_day <- openxlsx::read.xlsx("DS_Simplif.xlsx", "tidy_actual") %>%
   janitor::clean_names()
 
 
-
-calendar <- openxlsx::read.xlsx("DS_Simplif.xlsx", "calendar") %>% 
-  as_tibble() %>% 
-  mutate(Report.Date = as.Date(Report.Date,origin = "1899-12-30")) %>% 
-  mutate(Data.Date = as.Date(Data.Date,origin = "1899-12-30")) %>% 
-  janitor::clean_names()
 
 
 
@@ -314,7 +318,7 @@ FCAST <- function(){
   
   
 
-  return(list(FCAST10  = FCAST10,
+  return(list(FCASTCorp  = FCASTCorp,
               budget_post = budget_post,
               actual_post_alloc = actual_post_alloc
 
@@ -329,13 +333,10 @@ FCAST <- function(){
 
 DSActuals() %>% openxlsx::write.xlsx(., "BigQuery/DSActuals.xlsx", overwrite = T)
 FCAST()     %>% openxlsx::write.xlsx(., "BigQuery/FCAST.xlsx", overwrite = T)
-
+calendar    %>% openxlsx::write.xlsx(., "BigQuery/calendar.xlsx", overwrite = T)
 
 
 }
-
-
-
 
 
 
@@ -349,11 +350,112 @@ FCAST()     %>% openxlsx::write.xlsx(., "BigQuery/FCAST.xlsx", overwrite = T)
 
 # Complete output : 
 
-
-left_join(calendar, by = c("Custom#2" = "hfm_day")) 
-
+# Reduction and Time::: 
 
 
+# # Cosolidated perspective :  --------------------------------------------
+
+
+consolidated_perspective <- function(){ 
+
+
+# DSActuals ::: ScenarioView  -------------------------------------------
+
+
+dailyslstot <-  openxlsx::read.xlsx("BigQuery/DSActuals_filled.xlsx", "dailyslstot") %>%
+  as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region)) %>% 
+  select(index, Region, Category, Entity, Year, 'Custom#2',Actuals)
+  
+cummean     <-  openxlsx::read.xlsx("BigQuery/DSActuals_filled.xlsx", "cummean")     %>%
+  as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region))%>% 
+  select(index, Region, Category, Entity, Year, 'Custom#2',QR,OP)
+
+projected   <-  openxlsx::read.xlsx("BigQuery/DSActuals_filled.xlsx", "projected")   %>%
+  as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region))%>% 
+  select(index, Region, Category, Entity, Year, 'Custom#2',CP)
+
+lowtarget   <-  openxlsx::read.xlsx("BigQuery/DSActuals_filled.xlsx", "lowtarget")   %>%
+  as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region))%>% 
+  select(index, Region, Category, Entity, Year, 'Custom#2',lowtarget)
+
+meantarget  <-  openxlsx::read.xlsx("BigQuery/DSActuals_filled.xlsx", "meantarget")  %>%
+  as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region))%>% 
+  select(index, Region, Category, Entity, Year, 'Custom#2',meantarget)
+
+hightarget  <-  openxlsx::read.xlsx("BigQuery/DSActuals_filled.xlsx", "hightarget")  %>%
+  as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region))%>% 
+  select(index, Region, Category, Entity, Year, 'Custom#2',hightarget)
+
+
+DS_actuals <-  dailyslstot %>% 
+  left_join(cummean,    by = c("index", "Region", "Category", "Entity", "Year", "Custom#2")) %>% 
+  left_join(projected,  by = c("index", "Region", "Category", "Entity", "Year", "Custom#2")) %>% 
+  left_join(lowtarget,  by = c("index", "Region", "Category", "Entity", "Year", "Custom#2")) %>% 
+  left_join(meantarget, by = c("index", "Region", "Category", "Entity", "Year", "Custom#2")) %>% 
+  left_join(hightarget, by = c("index", "Region", "Category", "Entity", "Year", "Custom#2")) %>% 
+  left_join(calendar, by = c("Custom#2" = "hfm_day")) 
+
+
+# openxlsx::write.xlsx(DS_actuals, "/BigQuery/DSActuals_merged.xlsx")
+
+
+
+
+# Forecasts ::: Periodic  -----------------------------------------------
+
+
+  FCAST10 <-  openxlsx::read.xlsx("BigQuery/FCAST_filled.xlsx", "FCAST10") %>%
+    as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region)) %>% 
+    select(index, Region, Category, Year, Account, Period, Years, Entity,FCAST10)
+  
+  budget_post     <-  openxlsx::read.xlsx("BigQuery/FCAST_filled.xlsx", "budget_post")%>%
+    as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region)) %>% 
+    select(index, Region, Category, Year, Account, Period, Years, Entity,budget_post)
+  
+  
+  actual_post_alloc   <-  openxlsx::read.xlsx("BigQuery/FCAST_filled.xlsx", "actual_post_alloc")   %>%
+    as_tibble %>% mutate(Region = ifelse(is.na(Region),"NA",Region)) %>% 
+    select(index, Region, Category, Year, Account, Period, Years, Entity, actual_post_alloc)
+  
+  
+  
+  forecasted <-
+    
+    FCAST10 %>%
+    left_join(budget_post,       by = c("index","Region","Category","Year","Account","Period","Years","Entity")) %>%
+    left_join(actual_post_alloc, by = c("index","Region","Category","Year","Account","Period","Years","Entity")) %>% 
+    mutate(month = match(Period, month.abb)) %>%  
+    mutate(ref_date = make_date(year = Year, month = month, day = 1L)) %>% 
+    mutate(quarter = quarter(ref_date)) %>% 
+    mutate(quarter = paste0("Q",quarter))
+    
+
+  
+ # openxlsx::write.xlsx(forecasted, "/BigQuery/forecasted_merged.xlsx")
+  
+  
+
+
+
+return(list(DS_actuals = DS_actuals,
+            forecasted = forecasted,
+            calendar   = calendar))
+
+
+}
+
+
+
+
+# Aggregation -------------------------------------------------------------
+
+
+# Create a function to filter by day a build all the aggregations, 
+# Calculated fields, and structure of the original report, 
+# Inspiration in DSDash Notepad. 
+
+
+# Ad Hoc ------------------------------------------------------------------
 
 
 
@@ -366,4 +468,14 @@ datae <- openxlsx::read.xlsx("dataexplorer.xlsx") %>%
   mutate(quarter = quarter(report_date)) %>% 
   mutate(quarter = paste0("Q",quarter))
 
+
+# Example
+sah <- openxlsx::read.xlsx("sales_actuals_history.xlsx") %>% 
+  as_tibble() %>% 
+  mutate(Region = ifelse(is.na(Region),"NA",Region)) %>% 
+  left_join(calendar, by = c("Custom#2" = "hfm_day")) %>% 
+  mutate(quarter = quarter(report_date)) %>% 
+  mutate(quarter = paste0("Q",quarter))
+  
+sah %>% openxlsx::write.xlsx("sales_actuals_history.xlsx", overwrite = T)
 
