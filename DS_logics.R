@@ -456,10 +456,11 @@ actuals   <- consolidated_perspective()$DS_actuals
 forecast  <- consolidated_perspective()$forecasted
 
 
+
 # Dynamic Function::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
-aggregation <- function(day_ref, month_ref, year_ref){ 
+actual_tracking <- function(day_ref, month_ref, year_ref){ 
 
 # automate timing of date with calendar: 
   
@@ -518,7 +519,8 @@ aggregation <- function(day_ref, month_ref, year_ref){
     left_join(post_alloc,by = c("Region", "Category", "Account", "Period", "Entity")) %>% 
     select(-ref_date, -quarter, -month, -index) %>% 
     rename(month = Period) %>% 
-    mutate(Year = as.double(Year)) 
+    mutate(Year = as.double(Year)) %>% 
+    rename(Entity_hfm = Entity)
 
 # Create a function to filter by day a build all the aggregations, 
 # Calculated fields, and structure of the original report, 
@@ -528,7 +530,17 @@ aggregation <- function(day_ref, month_ref, year_ref){
     left_join(PY,     by = c("Region", "Category", "Entity", "Year", "Custom#2")) %>% 
     left_join(MTD,    by = c("Region", "Category", "Entity", "Year")) %>% 
     left_join(MTD_PY, by = c("Region", "Category", "Entity", "Year")) %>% 
-    left_join(forecast_section, by = c("Region", "Category", "Year","month")) 
+    left_join(forecast_section, by = c("Region", "Category", "Year","month")) %>% 
+    mutate(VPY = Actuals/PY_Actuals-1) %>% 
+    mutate(QR = QR*FCAST10*1000000) %>% 
+    mutate( VQRusd = MTD_actuals - QR ) %>% 
+    mutate("VQR%" = VQRusd / QR ) %>% 
+    mutate(OP = OP*budget_post*1000000) %>% 
+    mutate(VOPusd = MTD_actuals - OP) %>% 
+    mutate("VOP%" = VOPusd / OP )
+    
+    
+  
     
     
   
@@ -537,7 +549,7 @@ aggregation <- function(day_ref, month_ref, year_ref){
   }
   
   
-aggregation("d229","Nov",2021)
+actual_tracking("d229","Nov",2021)
   
   
   
