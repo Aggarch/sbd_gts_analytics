@@ -427,7 +427,8 @@ DS_actuals <-  dailyslstot %>%
     mutate(month = match(Period, month.abb)) %>%  
     mutate(ref_date = make_date(year = Year, month = month, day = 1L)) %>% 
     mutate(quarter = quarter(ref_date)) %>% 
-    mutate(quarter = paste0("Q",quarter))
+    mutate(quarter = paste0("Q",quarter)) %>% 
+    rename(month_day = month)
     
 
   
@@ -450,10 +451,97 @@ return(list(DS_actuals = DS_actuals,
 # Aggregation -------------------------------------------------------------
 
 
+# Resources:
+actuals   <- consolidated_perspective()$DS_actuals
+forecast  <- consolidated_perspective()$forecasted
+
+
+# Dynamic Function::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
+aggregation <- function(day_ref, month_ref, year_ref){ 
+
+# automate timing of date with calendar: 
+  
+
+# DSActual / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+
+# daily
+  daily   <- actuals %>% filter(`Custom#2` == day_ref, Year == year_ref) %>% 
+    select(-contains("target"),-day,-week,-month_day,-quarter) %>% 
+    select(-contains("_date")) %>% 
+    mutate(Year = as.double(Year))
+
+
+# PY daily
+  PY      <- actuals %>% filter(`Custom#2` == day_ref, Year == year_ref-1) %>% 
+    select(Region, Category, Entity, Year,`Custom#2`, PY_Actuals=Actuals) %>% 
+    mutate(Year = as.numeric(Year)+1)
+
+
+# MTD 
+  MTD     <- actuals %>% filter(month == month_ref, 
+                              Year == year_ref,
+                              `Custom#2` <= day_ref) %>% 
+          group_by(Region,Category,Entity,Year) %>% 
+          summarise(Actuals = sum(Actuals),
+                    
+                    .groups = "drop") %>% 
+          rename(MTD_actuals = Actuals) %>% 
+          mutate(Year = as.double(Year))
+
+
+# MTD PY 
+  MTD_PY   <- actuals %>% filter(month == month_ref, 
+                              Year == year_ref-1,
+                              `Custom#2` <= day_ref) %>% 
+    group_by(Region,Category,Entity,Year) %>% 
+    summarise(Actuals = sum(Actuals),.groups = "drop") %>% 
+    rename(PY_MTD_actuals = Actuals) %>% 
+    mutate(Year = as.numeric(Year) + 1)
+  
+# FCST  / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
+  
+  
+# QR FCAST10  & OP budget_post
+  current_fcast <-  forecast %>% filter(Period == month_ref, Year == year_ref) %>% 
+    select(-actual_post_alloc)
+  
+  
+# PY Actual Post Alloc
+  post_alloc <-     forecast %>% filter(Period == month_ref, Year == year_ref-1) %>% 
+  select(Region, Category,Account, Period, Entity, actual_post_alloc)
+  
+# Fcast Section
+  
+  forecast_section <-   current_fcast %>% 
+    left_join(post_alloc,by = c("Region", "Category", "Account", "Period", "Entity")) %>% 
+    select(-ref_date, -quarter, -month, -index) %>% 
+    rename(month = Period) %>% 
+    mutate(Year = as.double(Year)) 
+
 # Create a function to filter by day a build all the aggregations, 
 # Calculated fields, and structure of the original report, 
 # Inspiration in DSDash Notepad. 
 
+  actual_tracking <-   daily %>% 
+    left_join(PY,     by = c("Region", "Category", "Entity", "Year", "Custom#2")) %>% 
+    left_join(MTD,    by = c("Region", "Category", "Entity", "Year")) %>% 
+    left_join(MTD_PY, by = c("Region", "Category", "Entity", "Year")) %>% 
+    left_join(forecast_section, by = c("Region", "Category", "Year","month")) 
+    
+    
+  
+  return(actual_tracking)
+  
+  }
+  
+  
+aggregation("d229","Nov",2021)
+  
+  
+  
+  
 
 # Ad Hoc ------------------------------------------------------------------
 
