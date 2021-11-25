@@ -517,7 +517,7 @@ actual_tracking <- function(day_ref, month_ref, year_ref){
   
   forecast_section <-   current_fcast %>% 
     left_join(post_alloc,by = c("Region", "Category", "Account", "Period", "Entity")) %>% 
-    select(-ref_date, -quarter, -month, -index) %>% 
+    select(-ref_date, -quarter, -index) %>% 
     rename(month = Period) %>% 
     mutate(Year = as.double(Year)) %>% 
     rename(Entity_hfm = Entity)
@@ -542,15 +542,15 @@ actual_tracking <- function(day_ref, month_ref, year_ref){
     
   
     
-    
-  
   return(actual_tracking)
   
   }
   
   
 actual_tracking("d229","Nov",2021)
-  
+
+# Iterate this function against the calendar ? 
+# Receive back all the reports? 
   
   
   
