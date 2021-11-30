@@ -354,6 +354,7 @@ calendar    %>% openxlsx::write.xlsx(., "BigQuery/calendar.xlsx", overwrite = T)
 
 
 # # Cosolidated perspective :  --------------------------------------------
+setwd(DS_data)
 
 
 consolidated_perspective <- function(){ 
@@ -530,29 +531,68 @@ actual_tracking <- function(day_ref, month_ref, year_ref){
     left_join(PY,     by = c("Region", "Category", "Entity", "Year", "Custom#2")) %>% 
     left_join(MTD,    by = c("Region", "Category", "Entity", "Year")) %>% 
     left_join(MTD_PY, by = c("Region", "Category", "Entity", "Year")) %>% 
-    left_join(forecast_section, by = c("Region", "Category", "Year","month")) %>% 
-    mutate(VPY = Actuals/PY_Actuals-1) %>% 
-    mutate(QR = QR*FCAST10*1000000) %>% 
-    mutate( VQRusd = MTD_actuals - QR ) %>% 
-    mutate("VQR%" = VQRusd / QR ) %>% 
-    mutate(OP = OP*budget_post*1000000) %>% 
-    mutate(VOPusd = MTD_actuals - OP) %>% 
-    mutate("VOP%" = VOPusd / OP )
+    left_join(forecast_section, by = c("Region", "Category", "Year","month"))
     
-    
-  
     
   return(actual_tracking)
   
   }
   
-  
-actual_tracking("d229","Nov",2021)
+# POC  
+# actual_tracking("d235","Nov",2021)
 
 # Iterate this function against the calendar ? 
 # Receive back all the reports? 
   
   
+daily_p <- calendar %>%
+  filter(report_date <= today()) %>% 
+  select(hfm_day, month, report_date) %>% 
+  mutate(year = year(report_date)) %>% 
+  select(-report_date) %>% 
+  rename(day_ref   = hfm_day,
+         month_ref = month,
+         year_ref  = year)
+  
+
+
+d_analisys <- pmap(daily_p, actual_tracking) %>% 
+  map_dfr(., bind_rows)  %>% 
+  mutate(D_VPY  = (Actuals/PY_Actuals)-1) %>% 
+  mutate(VPYusd = MTD_actuals-PY_MTD_actuals) %>% 
+  mutate("VPY%" = VPYusd/PY_MTD_actuals) %>% 
+  mutate(QR = QR*FCAST10*1000000) %>% 
+  mutate( VQRusd = MTD_actuals - QR ) %>% 
+  mutate("VQR%" = VQRusd / QR ) %>% 
+  mutate(OP = OP*budget_post*1000000) %>% 
+  mutate(VOPusd = MTD_actuals - OP) %>% 
+  mutate("VOP%" = VOPusd / OP ) %>% 
+  mutate("QR_Converted%" = MTD_actuals/FCAST10) %>% 
+  mutate(QR_Gap = FCAST10-MTD_actuals) %>% 
+  mutate("OP_Converted%" = MTD_actuals/budget_post) %>% 
+  mutate(OP_Gap = budget_post-MTD_actuals) %>% 
+  mutate("PY_Converted%" = MTD_actuals/actual_post_alloc) %>% 
+  mutate(PY_Gap = actual_post_alloc-MTD_actuals) %>% 
+  
+  select(index, Region, Category, Entity, Year, `Custom#2`,
+         Actuals, PY_Actuals, D_VPY, MTD_actuals, QR, VQRusd,  
+         `VQR%`, OP, VOPusd, `VOP%`, PY_MTD_actuals, VPYusd,
+         `VPY%`, FCAST=FCAST10, "QR_Converted%", QR_Gap, budget_post,
+         "OP_Converted%",OP_Gap, actual_post_alloc,"PY_Converted%",
+         PY_Gap) %>% 
+  rename(hfm_day = `Custom#2`) %>% 
+  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))  %>%
+  mutate_if(~ any(is.infinite(.)),~ if_else(is.infinite(.),0,.))
+
+
+d_analisys_output <- calendar %>% left_join(d_analisys, by = "hfm_day")
+
+d_analisys_output %>%
+  openxlsx::write.xlsx(.,"ds_rec_actual_tracking.xlsx",overwrite = T)
+
+
+
+
   
 
 # Ad Hoc ------------------------------------------------------------------
