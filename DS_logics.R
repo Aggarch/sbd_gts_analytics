@@ -591,7 +591,7 @@ d_analisys_output %>%
   openxlsx::write.xlsx(.,"ds_rec_actual_tracking.xlsx",overwrite = T)
 
 
-
+#compare wit AEGA and other BL to fit nuances. 
 
   
 

@@ -15,7 +15,9 @@ setwd(PL_data)
 
 query_meta <- function(observ_year, observ_month){ 
 
-chasis <- openxlsx::read.xlsx("P&L_Table.xlsx") %>% as_tibble() %>% 
+file <- openxlsx::read.xlsx("P&L_Table.xlsx") %>% as_tibble()
+
+chasis<- file %>% 
   mutate(region = ifelse(is.na(region),"NA",region)) %>% 
   mutate(observation = observ_year,
          period = observ_month) %>% 
@@ -41,7 +43,7 @@ return(times)
 }
 
 
-years   <- tibble(period = 2016:year(today()))
+years   <- tibble(period = 2016  : year(today()))
 
 
 periods <-  map(years$period, 
@@ -50,6 +52,8 @@ periods <-  map(years$period,
 
 
 # Construction of history: 
+
+consolidated_history <- function(){ 
 
 PL_history <- map2(periods$observ_year, 
                    periods$observ_month,
@@ -69,18 +73,41 @@ PL_history <- map2(periods$observ_year,
   mutate(quarter = paste0("Q",quarter))
 
 
+# All Regions Total Products :::
+GEO  <- PL_history
+
+# SBUs Across all Regions ::: 
+PTG  <- PL_history %>% mutate(product = "PTG")
+OPG  <- PL_history %>% mutate(product = "OPG")
+HTAS <- PL_history %>% mutate(product = "HTAS")
+
+
+
+return(list(GEO  = GEO, 
+            PTG  = PTG,
+            OPG  = OPG,
+            HTAS = HTAS))
+
+
+}
+
+
 # Export to fill HsGet SmartView: 
 
-PL_history %>% openxlsx::write.xlsx(.,"P&L_History.xlsx", overwrite = T)
+consolidated_history() %>%
+  openxlsx::write.xlsx(.,"P&L_History.xlsx", overwrite = T)
 
 
 
 # After the refreshal of the History: 
+setwd(PL_data)
 
 PL_filled <- openxlsx::read.xlsx("P&L_History.xlsx") %>% 
   as_tibble() %>% 
   mutate(region = ifelse(is.na(region),"NA",region)) %>% 
   mutate(ref_date = as.Date(ref_date,origin = "1899-12-30"))
+
+PL_filled %>% openxlsx::write.xlsx(.,"PL.xlsx", overwrite = T)
   
 
 
