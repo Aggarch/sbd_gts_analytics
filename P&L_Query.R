@@ -63,7 +63,7 @@ PL_history <- map2(periods$observ_year,
               mutate(index = row_number()+1) %>% 
               mutate(index = as.character(index)) %>% 
   relocate(.before = observation, index) %>% 
-  mutate(result = '=@HsGetValue("PRD_OAC_RPTSBD01","Account#"&F2,"Period#"&G2,"Years#"&H2,"Currency#"&I2,"Scenario#"&J2,"Entity#"&E2,"Function#"&K2,"Total Product#"&L2,"Total Customer#"&M2,"Total Ship-to Geography#"&N2,"Total Brand#"&O2,"DTS#"&P2)/1000000') %>% 
+  mutate(result = '=@HsGetValue("PRD_OAC_RPTSBD01","Account#"&G2,"Period#"&H2,"Years#"&I2,"Currency#"&J2,"Scenario#"&K2,"Entity#"&F2,"Function#"&L2,"Total Product#"&M2,"Total Customer#"&N2,"Total Ship-to Geography#"&O2,"Total Brand#"&P2,"DTS#"&Q2)/1000000') %>% 
   mutate(result = str_replace_all(result,'[[:digit:]]+',index)) %>% 
   mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
   mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01"))%>%  
