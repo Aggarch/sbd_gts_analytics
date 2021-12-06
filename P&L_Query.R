@@ -11,7 +11,11 @@ PL_data         <- "C:/Users/AEG1130/Documents/P&L"
 setwd(PL_data)
 
 
-# Structured P&L Global 
+
+# Structured P&L Global ---------------------------------------------------
+
+# Build all the queries needed to extract the last 5 years P&L Data. 
+
 
 query_meta <- function(observ_year, observ_month){ 
 
@@ -78,19 +82,26 @@ GEO  <- PL_history
 
 # SBUs Across all Regions ::: 
 PTG  <- PL_history %>% mutate(product = "PTG")
-OPG  <- PL_history %>% mutate(product = "OPG")
+OPG  <- PL_history %>% mutate(product = "OUT")
 HTAS <- PL_history %>% mutate(product = "HTAS")
 
 
 
-return(list(GEO  = GEO, 
-            PTG  = PTG,
-            OPG  = OPG,
-            HTAS = HTAS))
+PL_hist <- GEO %>% 
+  bind_rows(PTG) %>% 
+  bind_rows(OPG) %>% 
+  bind_rows(HTAS)
+
+
+
+return(PL_hist)
 
 
 }
 
+
+
+# Consolidation & Population ---------------------------------------------
 
 # Export to fill HsGet SmartView: 
 
@@ -102,12 +113,41 @@ consolidated_history() %>%
 # After the refreshal of the History: 
 setwd(PL_data)
 
-PL_filled <- openxlsx::read.xlsx("P&L_History.xlsx") %>% 
-  as_tibble() %>% 
-  mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-  mutate(ref_date = as.Date(ref_date,origin = "1899-12-30"))
 
-PL_filled %>% openxlsx::write.xlsx(.,"PL.xlsx", overwrite = T)
+# Fill the data using BA&R 
+  PL_filled <- openxlsx::read.xlsx("P&L_History.xlsx") %>% 
+    as_tibble() %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    mutate(ref_date = as.Date(ref_date,origin = "1899-12-30"))
+  
+  
+# PL_filled %>% openxlsx::write.xlsx(.,"PL_filled.xlsx", overwrite = T)
   
 
 
+# ETL Logical Structure ---------------------------------------------------
+
+# Read Existent data 
+  PL_db <- 
+    openxlsx::read.xlsx("PL_filled.xlsx") %>% 
+    as_tibble() %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    mutate(ref_date = as.Date(ref_date,origin = "1899-12-30")) %>% 
+    mutate(result = as.character(result))
+  
+
+# Aggregate the new queries to get new Data of new period
+  PL_feed <- 
+  consolidated_history() %>% 
+    filter(ref_date >= lubridate::rollback(today(), roll_to_first = T))
+  
+  
+# Add new data to complete perspective perspective :    
+  PL_update <- 
+  PL_db %>% bind_rows(PL_feed)
+  
+  
+# Refresh data CTRL F replace Equals & refresh 
+  PL_update %>% openxlsx::write.xlsx(.,"PL_filled.xlsx")
+  
+  
