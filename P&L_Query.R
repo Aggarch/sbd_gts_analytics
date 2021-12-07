@@ -150,4 +150,112 @@ setwd(PL_data)
 # Refresh data CTRL F replace Equals & refresh 
   PL_update %>% openxlsx::write.xlsx(.,"PL_filled.xlsx")
   
+
+
+# P&L Function ------------------------------------------------------------
+
+  ispace <- PL_filled %>% 
+    select(ref_date , channel_cluster, product) %>%
+    distinct() %>% 
+    rename(iref_date = ref_date,
+           iproduct = product, 
+           ichannel_cluster = channel_cluster)
+
   
+  PNL <- function(iref_date, iproduct, ichannel_cluster){ 
+  
+    
+  date_n0 <- iref_date %>% as.Date()
+  date_n1 <- date_n0 %m-% years(1)
+  date_n2 <- date_n0 %m-% years(2)
+    
+
+  PL_data <- PL_filled %>% select(-currency, -Function,
+                                  -ship.to, -DTS, -index,
+                                  -entity, -account, -brand) %>% 
+    
+    filter(ref_date %in% c( date_n0, date_n1, date_n2)) %>% 
+    
+    filter(product         == iproduct, 
+           channel_cluster == ichannel_cluster) %>% 
+  
+    mutate(indicative = case_when(category == "Net Sales" ~ 1,
+                                  category == "Sales FX"  ~ 2,
+                                  category == "Acq Div"   ~ 3, 
+                                  category == "SGM"       ~ 4, 
+                                  category == "OCOS"      ~ 5, 
+                                  category == "AGM"       ~ 6, 
+                                  category == "SG&A"      ~ 7, 
+                                  category == "OM"        ~ 8)) %>% 
+    pivot_wider(names_from = scenario, values_from = result)
+  
+  
+  
+   i_observation <- PL_data %>% 
+     filter(ref_date == date_n0) %>% 
+     mutate(VFCAST_usd = ACTUAL_POST - FCSTCORP_POST,
+            VFCAST_perc = VFCAST_usd/FCSTCORP_POST) %>% 
+     mutate(VOP_usd  = ACTUAL_POST - BUDGET_POST,
+            VOP_perc = VOP_usd/BUDGET_POST) %>% 
+     mutate(REF_REAL = ACTUAL_POST) %>% 
+     rename_at(., vars( contains(c("ACTUAL","POST","VFCAST","VOP"))), list( ~paste0(.,"_",year(date_n0)))) %>% 
+     select(-years, -month, -ref_date)
+
+
+   
+   f_observation <- PL_data %>% 
+     filter(ref_date == date_n1 ) %>% 
+     select(region, channel_cluster,category,period,ACTUAL_POST) %>%
+     rename(PY = ACTUAL_POST)
+     
+   
+   s_observation <- PL_data %>% 
+     filter(ref_date == date_n2 ) %>% 
+     select(region, channel_cluster,category,period,ACTUAL_POST) %>% 
+     rename(PPY = ACTUAL_POST) 
+   
+   
+   
+     
+   PNL_observations <- 
+               i_observation %>%
+     left_join(f_observation,by = c("region", "channel_cluster", "category","period")) %>% 
+     left_join(s_observation,by = c("region", "channel_cluster", "category","period")) %>% 
+     mutate(VPY_usd = REF_REAL - PY,
+            VPY_perc= VPY_usd/PY) %>%
+     mutate(VPPY_usd = REF_REAL - PPY,
+            VPPY_perc= VPPY_usd/PPY) %>%
+     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
+     select(observation,quarter,period,
+            region,channel_cluster,
+            customer, product,indicative,category,
+            contains(paste(year(date_n0))),
+            PY, VPY_usd, VPY_perc, 
+            PPY, VPPY_usd, VPPY_perc)
+   
+   
+   
+   
+   PNL_observations %>% 
+     pivot_longer(!c(observation,quarter,period,region,channel_cluster,customer,product, indicative,category),
+                  names_to = "calculated",
+                  values_to = "value") %>% 
+     mutate(calculated = str_replace_all(calculated,paste0("_",year(today())),""))
+                                                                   
+   
+     
+   
+   
+   
+   return(observation)
+   
+  }
+   
+  
+  
+   
+
+  
+
+  
+  PL_PL <- pmap(ispace, PNL)
