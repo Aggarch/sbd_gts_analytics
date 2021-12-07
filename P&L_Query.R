@@ -154,6 +154,10 @@ setwd(PL_data)
 
 # P&L Function ------------------------------------------------------------
 
+  # (f○g)(x) = f (g(x)),
+  
+  
+  # Iteration Space:
   ispace <- PL_filled %>% 
     select(ref_date , channel_cluster, product) %>%
     distinct() %>% 
@@ -162,9 +166,13 @@ setwd(PL_data)
            ichannel_cluster = channel_cluster)
 
   
+  
+  
+  # P&L Function: 
   PNL <- function(iref_date, iproduct, ichannel_cluster){ 
   
-    
+  
+  # Moments   
   date_n0 <- iref_date %>% as.Date()
   date_n1 <- date_n0 %m-% years(1)
   date_n2 <- date_n0 %m-% years(2)
@@ -191,6 +199,7 @@ setwd(PL_data)
   
   
   
+  # Moment Zero 
    i_observation <- PL_data %>% 
      filter(ref_date == date_n0) %>% 
      mutate(VFCAST_usd = ACTUAL_POST - FCSTCORP_POST,
@@ -198,17 +207,18 @@ setwd(PL_data)
      mutate(VOP_usd  = ACTUAL_POST - BUDGET_POST,
             VOP_perc = VOP_usd/BUDGET_POST) %>% 
      mutate(REF_REAL = ACTUAL_POST) %>% 
-     rename_at(., vars( contains(c("ACTUAL","POST","VFCAST","VOP"))), list( ~paste0(.,"_",year(date_n0)))) %>% 
+     # rename_at(., vars( contains(c("ACTUAL","POST","VFCAST","VOP"))), list( ~paste0(.,"_",year(date_n0)))) %>% 
      select(-years, -month, -ref_date)
 
 
-   
+  # First Moment
    f_observation <- PL_data %>% 
      filter(ref_date == date_n1 ) %>% 
      select(region, channel_cluster,category,period,ACTUAL_POST) %>%
      rename(PY = ACTUAL_POST)
      
    
+  # Second Moment
    s_observation <- PL_data %>% 
      filter(ref_date == date_n2 ) %>% 
      select(region, channel_cluster,category,period,ACTUAL_POST) %>% 
@@ -229,33 +239,65 @@ setwd(PL_data)
      select(observation,quarter,period,
             region,channel_cluster,
             customer, product,indicative,category,
-            contains(paste(year(date_n0))),
-            PY, VPY_usd, VPY_perc, 
+            ACTUAL_POST,FCSTCORP_POST,
+            VFCAST_usd, VFCAST_perc,
+            BUDGET_POST, VOP_usd, VOP_perc,
+            PY, VPY_usd, VPY_perc,
             PPY, VPPY_usd, VPPY_perc)
    
    
    
    
-   PNL_observations %>% 
-     pivot_longer(!c(observation,quarter,period,region,channel_cluster,customer,product, indicative,category),
-                  names_to = "calculated",
-                  values_to = "value") %>% 
-     mutate(calculated = str_replace_all(calculated,paste0("_",year(today())),""))
-                                                                   
-   
-     
-   
-   
-   
-   return(observation)
+   return(PNL_observations)
    
   }
+  
+  
+  
+  
+
+# Calculation of Rows  ----------------------------------------------------
+
+   
+                                                           
+   
+     coords <- c("observation", "quarter", "period", 
+                 "region", "channel_cluster", "customer", 
+                 "product", "indicative", "category")
+   
+     
+     accounts_spread <-    PNL_observations %>%
+       select(contains(coords), contains("ACTUAL_POST")) %>% 
+       select(-indicative) %>% 
+         pivot_wider(names_from = category, values_from = contains("ACTUAL_POST"))
+     
+     
+     
+     previous_sales <-     PNL_observations %>% 
+       select(contains(coords),"PY" ,"PPY") %>% 
+       filter(category == "Net Sales")
+       
+     
+     accounts_spread %>% 
+       left_join(previous_sales,
+                 by = c("observation", "quarter", "period",
+                        "region", "channel_cluster", "customer", "product"))
+     
+   
+
    
   
   
    
 
-  
+# Cross Iteration  --------------------------------------------------------
+
 
   
-  PL_PL <- pmap(ispace, PNL)
+
+  # Explorer script with paralleling process to loop 
+    
+  PL_PL <- pmap(ispace, PNL) %>% 
+    
+  PL_condensed <- PL_PL %>%   map_dfr(., bind_rows) 
+    
