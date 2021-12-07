@@ -187,14 +187,15 @@ setwd(PL_data)
     filter(product         == iproduct, 
            channel_cluster == ichannel_cluster) %>% 
   
-    mutate(indicative = case_when(category == "Net Sales" ~ 1,
-                                  category == "Sales FX"  ~ 2,
-                                  category == "Acq Div"   ~ 3, 
-                                  category == "SGM"       ~ 4, 
-                                  category == "OCOS"      ~ 5, 
-                                  category == "AGM"       ~ 6, 
-                                  category == "SG&A"      ~ 7, 
-                                  category == "OM"        ~ 8)) %>% 
+    # mutate(indicative = case_when(category == "Net Sales" ~ 1,
+    #                               category == "Sales FX"  ~ 2,
+    #                               category == "Acq Div"   ~ 3, 
+    #                               category == "SGM"       ~ 4, 
+    #                               category == "OCOS"      ~ 5, 
+    #                               category == "AGM"       ~ 6, 
+    #                               category == "SG&A"      ~ 7, 
+    #                               category == "OM"        ~ 8)) %>% 
+    
     pivot_wider(names_from = scenario, values_from = result)
   
   
@@ -202,11 +203,11 @@ setwd(PL_data)
   # Moment Zero 
    i_observation <- PL_data %>% 
      filter(ref_date == date_n0) %>% 
-     mutate(VFCAST_usd = ACTUAL_POST - FCSTCORP_POST,
-            VFCAST_perc = VFCAST_usd/FCSTCORP_POST) %>% 
-     mutate(VOP_usd  = ACTUAL_POST - BUDGET_POST,
-            VOP_perc = VOP_usd/BUDGET_POST) %>% 
-     mutate(REF_REAL = ACTUAL_POST) %>% 
+     # mutate(VFCAST_usd = ACTUAL_POST - FCSTCORP_POST,
+     #        VFCAST_perc = VFCAST_usd/FCSTCORP_POST) %>% 
+     # mutate(VOP_usd  = ACTUAL_POST - BUDGET_POST,
+     #        VOP_perc = VOP_usd/BUDGET_POST) %>% 
+     # mutate(REF_REAL = ACTUAL_POST) %>% 
      # rename_at(., vars( contains(c("ACTUAL","POST","VFCAST","VOP"))), list( ~paste0(.,"_",year(date_n0)))) %>% 
      select(-years, -month, -ref_date)
 
@@ -230,21 +231,21 @@ setwd(PL_data)
    PNL_observations <- 
                i_observation %>%
      left_join(f_observation,by = c("region", "channel_cluster", "category","period")) %>% 
-     left_join(s_observation,by = c("region", "channel_cluster", "category","period")) %>% 
-     mutate(VPY_usd = REF_REAL - PY,
-            VPY_perc= VPY_usd/PY) %>%
-     mutate(VPPY_usd = REF_REAL - PPY,
-            VPPY_perc= VPPY_usd/PPY) %>%
-     mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
-     select(observation,quarter,period,
-            region,channel_cluster,
-            customer, product,indicative,category,
-            ACTUAL_POST,FCSTCORP_POST,
-            VFCAST_usd, VFCAST_perc,
-            BUDGET_POST, VOP_usd, VOP_perc,
-            PY, VPY_usd, VPY_perc,
-            PPY, VPPY_usd, VPPY_perc)
-   
+     left_join(s_observation,by = c("region", "channel_cluster", "category","period"))  
+     # mutate(VPY_usd = ACTUAL_POST  - PY,
+     #        VPY_perc= VPY_usd/PY) %>%
+     # mutate(VPPY_usd = ACTUAL_POST  - PPY,
+     #        VPPY_perc= VPPY_usd/PPY) %>%
+     # mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>%
+     # select(observation,quarter,period,
+     #        region,channel_cluster,
+     #        customer, product,category,
+     #        ACTUAL_POST,FCSTCORP_POST,
+     #        VFCAST_usd, VFCAST_perc,
+     #        BUDGET_POST, VOP_usd, VOP_perc,
+     #        PY, VPY_usd, VPY_perc,
+     #        PPY, VPPY_usd, VPPY_perc)
+
    
    
    
@@ -256,35 +257,45 @@ setwd(PL_data)
   
   
 
-# Calculation of Rows  ----------------------------------------------------
+# Calculation of Values  ----------------------------------------------------
 
    
-                                                           
+     calc_fields <- function(scenario){                                                        
    
      coords <- c("observation", "quarter", "period", 
                  "region", "channel_cluster", "customer", 
-                 "product", "indicative", "category")
+                 "product", "category")
    
      
      accounts_spread <-    PNL_observations %>%
-       select(contains(coords), contains("ACTUAL_POST")) %>% 
-       select(-indicative) %>% 
-         pivot_wider(names_from = category, values_from = contains("ACTUAL_POST"))
+       select(contains(coords), contains(scenario)) %>% 
+         pivot_wider(names_from = category,
+                     values_from = contains(scenario))
      
      
      
      previous_sales <-     PNL_observations %>% 
-       select(contains(coords),"PY" ,"PPY") %>% 
-       filter(category == "Net Sales")
+       select(contains(coords),"PY") %>% 
+       filter(category == "Net Sales") %>% 
+       mutate(category = "PY Sales")
        
      
-     accounts_spread %>% 
+     measures <-      accounts_spread %>% 
        left_join(previous_sales,
                  by = c("observation", "quarter", "period",
-                        "region", "channel_cluster", "customer", "product"))
+                        "region", "channel_cluster", "customer", "product")) %>% 
+       select(-category) %>% 
+       mutate(Organic_usd = `Net Sales` - PY - `Sales FX` - `Acq Div`) %>% 
+       mutate(Organic_perc = (Organic_usd/PY))%>%
+       pivot_longer(!c(observation, quarter, period,
+                       region, channel_cluster, customer, product),
+                    names_to = "accounts", values_to = scenario)
+       
      
+     return(new_measures)
+       
    
-
+     }
    
   
   
@@ -297,7 +308,8 @@ setwd(PL_data)
 
   # Explorer script with paralleling process to loop 
     
-  PL_PL <- pmap(ispace, PNL) %>% 
+  PL_PL <- pmap(ispace, PNL)  
     
-  PL_condensed <- PL_PL %>%   map_dfr(., bind_rows) 
+  PL_condensed <- PL_PL %>%
+    map_dfr(., bind_rows) 
     
