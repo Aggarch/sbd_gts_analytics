@@ -1,4 +1,15 @@
 
+# <> P&L Maths <>  --------------------------------------------------------
+
+
+# From P%L Query of PNL structure, {TIDY/TRANSFORMATION}
+# Iterative functionality to offer all PNLs Calculations Verticals & Horizontals. 
+# All the calculations are existing in the BAR 8 Blocks report. 
+# iterative creation of all P&Ls Maths see: ispace below. 
+
+# Metaprocess #2 
+
+
 # P&L Function ------------------------------------------------------------
 
 
@@ -9,100 +20,8 @@ library(lubridate)
 
 # Importation -------------------------------------------------------------
 
-PL_data         <- "C:/Users/AEG1130/Documents/P&L"
-setwd(PL_data)
 
-
-PL_update <- function(){ 
-
-moment <- rollback(today(),roll_to_first = T) %m-% months(1)
-
-PL_filled <- openxlsx::read.xlsx("PL_filled.xlsx") %>% 
-  as_tibble() %>% 
-  mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-  mutate(ref_date = as.Date(ref_date,origin = "1899-12-30")) %>% 
-  filter(ref_date < moment) 
-
-
-appendix <- PL_filled %>%
-  filter(ref_date == max(ref_date)) %>% 
-  mutate(ref_date =  ref_date %m+% months(1)) %>% 
-  mutate(quarter = quarter(ref_date)) %>% 
-  mutate(quarter = paste0("Q",quarter)) %>% 
-  mutate(observation = year(ref_date)) %>% 
-  mutate(month = month(ref_date)) %>% 
-  mutate(period = month.name[month]) %>% 
-  mutate(result = as.character(result)) %>% 
-  mutate(result = '=@HsGetValue("PRD_OAC_RPTSBD01","Account#"&G2,"Period#"&H2,"Years#"&I2,"Currency#"&J2,"Scenario#"&K2,"Entity#"&F2,"Function#"&L2,"Total Product#"&M2,"Total Customer#"&N2,"Total Ship-to Geography#"&O2,"Total Brand#"&P2,"DTS#"&Q2)/1000000') 
-
-
-setwd(PL_data)
-
-to_update <- appendix %>% 
-  mutate(index  = row_number()+1) %>% 
-  mutate(index  = as.character(index)) %>%
-  mutate(result = str_replace_all(result,'[[:digit:]]+',index)) %>% 
-  mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
-  mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01")) 
-
-
-
-openxlsx::write.xlsx(to_update,"PL_to_update.xlsx", overwrite = T)
-  
-
-
-print("Done, HsGet BA&R Formula needs to be REFRESH:")
-
-print(getwd())
-
-directory <-list.files() %>% as_tibble()
-
-print(directory)
-
-
-return(to_update)
-
-
-  
-}
-  
-  
-PL_apendice <- function(){
-  
-  
-  PL_filled <- openxlsx::read.xlsx("PL_filled.xlsx") %>% 
-    as_tibble() %>% 
-    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    mutate(ref_date = as.Date(ref_date,origin = "1899-12-30")) %>% 
-    filter(ref_date < moment) 
-  
-  
-  PL_updated <- openxlsx::read.xlsx("PL_to_update.xlsx") %>% 
-    as_tibble() %>% 
-    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    mutate(ref_date = as.Date(ref_date,origin = "1899-12-30"))
-
-  
-  PNL_updated <- PL_filled %>% 
-    bind_rows(PL_updated)  
-    
-  # Looks fine ...
-  # Recreate the PL_filled version to make it recursive/recurrent
-  
-  
-  
-  
-}  
-
-
-
-# Recreate times based cols and result query....
-  
-
-
-
-
-PL_filled %>% openxlsx::write.xlsx(.,"PL_filled.xlsx",overwrite = T)
+PL_filled <- openxlsx::read.xlsx("PL_filled.xlsx")
 
 
 

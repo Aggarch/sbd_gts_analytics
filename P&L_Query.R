@@ -1,4 +1,15 @@
 
+# <> P&L Query <>  --------------------------------------------------------
+
+
+# From Basic PNL structure, {COLLECTION/IMPORTATION}
+# Iterative functionality to offer all PNLs across Region, SBU, Products. 
+# Architecture for BA&R recursive refreshal MetaQuery since all the results
+# Are equivalent to a HsGet original intersection Formula of last 5 years. 
+# All the queries existing in the BAR 8 Blocks report. 
+
+# Metaprocess #1
+
 # MTD Regional P&L Data. 
 
 # 8 Blocks Reference. 
@@ -121,33 +132,7 @@ setwd(PL_data)
     mutate(ref_date = as.Date(ref_date,origin = "1899-12-30"))
   
   
-# PL_filled %>% openxlsx::write.xlsx(.,"PL_filled.xlsx", overwrite = T)
+  PL_filled %>% openxlsx::write.xlsx(.,"PL_filled.xlsx", overwrite = T)
   
 
-
-# ETL Logical Structure ---------------------------------------------------
-
-# Read Existent data 
-  PL_db <- 
-    openxlsx::read.xlsx("PL_filled.xlsx") %>% 
-    as_tibble() %>% 
-    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    mutate(ref_date = as.Date(ref_date,origin = "1899-12-30")) %>% 
-    mutate(result = as.character(result))
-  
-
-# Aggregate the new queries to get new Data of new period
-  PL_feed <- 
-  consolidated_history() %>% 
-    filter(ref_date >= lubridate::rollback(today(), roll_to_first = T))
-  
-  
-# Add new data to complete perspective perspective :    
-  PL_update <- 
-  PL_db %>% bind_rows(PL_feed)
-  
-  
-# Refresh data CTRL F replace Equals & refresh 
-  PL_update %>% openxlsx::write.xlsx(.,"PL_filled.xlsx")
-  
 
