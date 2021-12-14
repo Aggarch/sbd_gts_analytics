@@ -22,11 +22,12 @@ library(lubridate)
 
 # Data Feed ---------------------------------------------------------------
 
+
+
 # Directory
 PL_data         <- "C:/Users/AEG1130/Documents/P&L"
 setwd(PL_data)
 
-source("P&L_Maths.R")
 
 
 # Time
@@ -129,6 +130,9 @@ PL_apendice <- function(){
 
 Profit_Loss_update <- function(){ 
 
+PL_data         <- "C:/Users/AEG1130/Documents/P&L"
+setwd(PL_data)  
+  
 PL_filled <- openxlsx::read.xlsx("PL_filled.xlsx") %>% 
   as_tibble() %>% 
   mutate(region = ifelse(is.na(region),"NA",region)) %>% 
@@ -152,6 +156,10 @@ ispace <- PL_filled_last %>%
          ichannel_cluster = channel_cluster)
 
 
+setwd("~/projects/sbd_gts_analytics")
+source("remote_functions_pnl.R")
+
+
 
 Consolidated_PNL_Refresh <- pmap(ispace, PNL)  
 
@@ -167,6 +175,8 @@ Profit_Loss_feed <- Consolidated_PNL_Refresh %>%
 Profit_Loss_updated <- ProfitL %>%
   bind_rows(Profit_Loss_feed)
 
+
+setwd(PL_data)  
 openxlsx::write.xlsx(Profit_Loss_updated, "Profit_Loss.xlsx", overwrite = T) 
 
 

@@ -1,4 +1,6 @@
 
+# WEB SCRAPPING
+
 
 # email updates: https://r-bar.net/r-scripts-mobile-device-email-triggers/
 
@@ -25,36 +27,34 @@ email.msg <-
 
 #Email Trigger when "Hey R - Send Update"
 
-
 library(blastula)
 library(keyring)
 
 #andres.garcia@sbdinc.com
 
 
-
-create_smtp_creds_key(
-  id = "gmail",
-  user = "financialaboratory@gmail.com",
-  provider = "gmail",
-  overwrite = F
-)
- 
-
-
-
+# 
+# create_smtp_creds_key(
+#   id = "gmail",
+#   user = "financialaboratory@gmail.com",
+#   provider = "gmail",
+#   overwrite = T
+# )
+#  
 
 
 view_credential_keys()
 
+unalloc <- "C:/Users/AEG1130/Stanley Black & Decker/GTS Group FP&A - Documents/2021/Close/11 November 2021/Closing Files/Close Trackers/Unallocated Report"
+setwd(unalloc)
 
 email_body <-  paste("Hi! This new report was generated at", Sys.time())
 
 email_footer <- "Please contact us with any questions"
 
 email  <- compose_email(body = email.msg,
-                        footer = email_footer)
-
+                        footer = email_footer)%>%
+  add_attachment(file = "GTS_PRODUCT_UNALLOCATED_2021_NOV_CLOSE_12092021@9AM.xlsx", filename = "unalloc")
 
 
 smtp_send(email,
@@ -63,3 +63,7 @@ smtp_send(email,
           subject = "Product Unallocated Report December 9 @ 12PM",
           credentials = creds_key("gmail")
 )
+
+
+# Batch file 
+# C:\"Users"\AEG1130\Documents\R\R-4.1.1\bin\Rscript.exe C:\Users\AEG1130\Documents\Trigger\emailTriggers.R

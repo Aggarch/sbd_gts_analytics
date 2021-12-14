@@ -1,42 +1,5 @@
 
-# <> P&L Maths <>  --------------------------------------------------------
-
-
-# From P%L Query of PNL structure, {TIDY/TRANSFORMATION}
-# Iterative functionality to offer all PNLs Calculations Verticals & Horizontals. 
-# All the calculations are existing in the BAR 8 Blocks report. 
-# iterative creation of all P&Ls Maths see: ispace below. 
-
-# Metaprocess #2 
-
-
-# P&L Function ------------------------------------------------------------
-
-
-# (f○g)(x) = f (g(x)),
-library(tidyverse)
-library(lubridate)
-
-
-# Importation -------------------------------------------------------------
-
-
- PL_filled <- openxlsx::read.xlsx("PL_filled.xlsx")
-
-
-
-# Iteration Space:
-ispace <- PL_filled %>%
-  select(ref_date, product, channel_cluster) %>%
-  distinct() %>%
-  rename(iref_date = ref_date,
-         iproduct = product,
-         ichannel_cluster = channel_cluster)
-
-
-
-# P&L Function: -----------------------------------------------------------
-
+#  REMOTE Functions
 PNL <- function(iref_date, iproduct, ichannel_cluster){ 
   
   
@@ -272,7 +235,6 @@ PNL <- function(iref_date, iproduct, ichannel_cluster){
       accounts == "OM_perc"       ~ "OM %",
       accounts == "CM_perc"       ~ "CM %",
       TRUE ~ as.character(accounts))) 
-    
   
   
   
@@ -282,23 +244,77 @@ PNL <- function(iref_date, iproduct, ichannel_cluster){
 }
 
 
-
-# Cross Iteration  --------------------------------------------------------
-
-
-# Explorer with parallel processing to loop 
-
-Consolidated_PNL <- pmap(ispace, PNL)
-
-Profit_Loss <- Consolidated_PNL %>%
-  map_dfr(., bind_rows) %>%
-  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))  %>%
-  mutate_if(~ any(is.infinite(.)),~ if_else(is.infinite(.),0,.)) %>%
-  arrange(observation, period, indicative)
-
-Profit_Loss %>% openxlsx::write.xlsx(.,"Profit_Loss.xlsx")
-
-
-
+#  Query Meta 
+query_meta <- function(observ_year, observ_month){ 
   
+  file <- openxlsx::read.xlsx("P&L_Table.xlsx") %>% as_tibble()
+  
+  chasis<- file %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    mutate(observation = observ_year,
+           period = observ_month) %>% 
+    mutate(year_num = substr(observation, 3,4)) %>% 
+    mutate(years = paste0("FY",year_num)) %>% 
+    select(-year_num, -index) 
+  
+  
+  return(chasis)
+  
+}
+
+
+# Times & Iterations 
+timing <- function(period){ 
+  
+  times <- tibble(observ_month  = month.name) %>% 
+    mutate(observ_year = period)
+  
+  return(times)
+  
+}
+
+
+# Construction of history: 
+consolidated_history <- function(){ 
+  
+  PL_history <- map2(periods$observ_year, 
+                     periods$observ_month,
+                     query_meta) %>% 
+    map_dfr(., bind_rows) %>% 
+    arrange(desc(observation)) %>% 
+    mutate(index = row_number()+1) %>% 
+    mutate(index = as.character(index)) %>% 
+    relocate(.before = observation, index) %>% 
+    mutate(result = '=@HsGetValue("PRD_OAC_RPTSBD01","Account#"&G2,"Period#"&H2,"Years#"&I2,"Currency#"&J2,"Scenario#"&K2,"Entity#"&F2,"Function#"&L2,"Total Product#"&M2,"Total Customer#"&N2,"Total Ship-to Geography#"&O2,"Total Brand#"&P2,"DTS#"&Q2)/1000000') %>% 
+    mutate(result = str_replace_all(result,'[[:digit:]]+',index)) %>% 
+    mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
+    mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01"))%>%  
+    mutate(month = match(period, month.name)) %>%  
+    mutate(ref_date = make_date(year = observation, month = month, day = 1L)) %>% 
+    mutate(quarter = quarter(ref_date)) %>% 
+    mutate(quarter = paste0("Q",quarter))
+  
+  
+  # All Regions Total Products :::
+  GEO  <- PL_history
+  
+  # SBUs Across all Regions ::: 
+  PTG  <- PL_history %>% mutate(product = "PTG")
+  OPG  <- PL_history %>% mutate(product = "OUT")
+  HTAS <- PL_history %>% mutate(product = "HTAS")
+  
+  
+  
+  PL_hist <- GEO %>% 
+    bind_rows(PTG) %>% 
+    bind_rows(OPG) %>% 
+    bind_rows(HTAS)
+  
+  
+  
+  return(PL_hist)
+  
+  
+}
+
 
