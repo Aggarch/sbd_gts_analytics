@@ -168,7 +168,9 @@ Profit_Loss_feed <- Consolidated_PNL_Refresh %>%
   map_dfr(., bind_rows) %>% 
   mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.))  %>%
   mutate_if(~ any(is.infinite(.)),~ if_else(is.infinite(.),0,.)) %>% 
-  arrange(observation, period, indicative)
+  arrange(observation, period, indicative) %>% 
+  mutate(month = match(period, month.name)) %>%  
+  mutate(ref_date = make_date(year = observation, month = month, day = 1L))
 
 
 
