@@ -1,15 +1,14 @@
 
-# <> Organics <>  --------------------------------------------------------
+# <> Organics Query <>  --------------------------------------------------------
 
 
 # From Basic Organics structure, {COLLECTION/IMPORTATION}
-# Iterative functionality to offer all Ad hocs organics across Regions, SBU, Products. 
-# Architecture for BA&R recursive refreshal MetaQuery since all the results
+# Iterative functionality to offer all Ad hocs organics across Regions, . 
+# BA&R recursive refreshal as a result of HsGet formula by row. 
 
-# Metaprocess #1
+# Reference: 
+# CFP&A Organic % Analysis (Corporate Ad Hoc). 
 
-
-# 8 Blocks Reference. 
 
 library(tidyverse)
 library(lubridate)
@@ -20,105 +19,73 @@ setwd(organics_data)
 
 
 
-# Structured P&L Global ---------------------------------------------------
 
-# Build all the queries needed to extract the last 5 years P&L Data. 
-query_meta <- function(observ_year, observ_month){ 
+# Close Update ---------------------------------------------------------------
+
+# To execute this step both sources should be BAR refreshed, an additional filter
+# was set at the summary lyer to double check the correct twindow. 
+
+# EXECUTE AFTER BAR REFRESHAL 
+organics_data_update <- function(){ 
+
+# Structure comming from this file, logic available at organics_struct.R  
+# org_hist_upt <- openxlsx::read.xlsx("ref/organics_history.xlsx") %>% 
   
-  file <- openxlsx::read.xlsx("tidy_organics_query.xlsx") %>% as_tibble()
+  org_hist_upt <- openxlsx::read.xlsx("organics_updated.xlsx") %>% 
+        as_tibble() %>% 
+        mutate(ref_date  = as.Date(ref_date, origin = "1899-12-30")) %>% 
+        mutate(exec_day  = as.Date(exec_day, origin = "1899-12-30")) %>% 
+        mutate(region = ifelse(is.na(region),"NA",region)) 
+
+
+  org_curr <- openxlsx::read.xlsx("organics_current.xlsx") %>%
+            as_tibble() %>% 
+        mutate(ref_date = as.Date(ref_date, origin = "1899-12-30")) %>% 
+        mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+        select(-index, -ship_to, -currency, -customer,
+               -'function', -product, -brand) %>% 
+        mutate(geo =  case_when(region == "US" ~ "North America",
+                                region == "NA" ~ "North America",
+                                region == "Canada" ~ "North America",
+                                region == "EMEA ANZ" ~ "Europe & ANZ",
+                                region == "LAG" ~ "Latin America",
+                                region == "ASIA" ~ "Asia")) %>% 
+        relocate(.before = region, geo) %>% 
+        mutate(exec_day = today()) %>% 
+        mutate(timestamp = timestamp())
+
+
+  org_updated <- org_hist_upt  %>%
+     bind_rows(org_curr)
+
   
-  chasis<- file %>% 
-    janitor::clean_names() %>% 
-    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    mutate(observation = observ_year,
-           period = observ_month) %>% 
-    mutate(year_num = substr(observation, 3,4)) %>% 
-    mutate(years = paste0("FY",year_num)) %>% 
-    select(-year_num) %>% 
-    mutate(index = row_number()+1) 
-    
-  
-  return(chasis)
-  
+# RESET 
+# org_updated <- org_updated %>%
+#   anti_join(org_curr,
+#             by = c("geo","region","channel",
+#                    "type", "observation", "period"))
+
+
+
+org_updated %>% openxlsx::write.xlsx(.,"organics_updated.xlsx", overwrite = T)
+
+
+return(org_updated)
 }
-
-
-# Times & Iterations 
-timing <- function(period){ 
-  
-  times <- tibble(observ_month  = month.name) %>% 
-    mutate(observ_year = period)
-  
-  return(times)
-  
-}
-
-years   <- tibble(period = 2016  : year(today()))
-
-periods <-  map(years$period, 
-                timing) %>% 
-  map_dfr(., bind_rows) 
-
-
-
-
-
-# BA&R Data Pulling  ------------------------------------------------------
-
-
-organics_hist <- function(){ 
-  
-  organics_structure <- map2(periods$observ_year, 
-                             periods$observ_month,
-                             query_meta) %>% 
-    
-    map_dfr(., bind_rows) %>% 
-    arrange(desc(observation)) %>% 
-    relocate(.before = observation, index) %>% 
-    
-    mutate(month = match(period, month.name)) %>%  
-    mutate(ref_date = make_date(year = observation, month = month, day = 1L)) %>% 
-    mutate(quarter = quarter(ref_date)) %>% 
-    mutate(quarter = paste0("Q",quarter)) 
-    
-    
-    
-    organics_history <- organics_structure %>% 
-      filter(ref_date <= today() %>% rollback(roll_to_first = T)) %>% 
-      mutate(index = row_number()+1) %>% 
-      mutate(index = as.character(index)) %>% 
-      mutate(result = '=HsGetValue("PRD_OAC_RPTSBD01","Entity#"&D2,"Scenario#"&E2,"Years#"&M2,"Period#"&N2,"Account#"&F2,"Currency#"&G2,"Total Product#"&H2,"Total Customer#"&I2,"Function#"&J2,"DTS#"&O2,"Total Ship-to Geography#"&K2,"Total Brand#"&L2)') %>% 
-    mutate(result = str_replace_all(result,'[[:digit:]]+',index)) %>% 
-    mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
-    mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01")) %>%  
-    relocate(.after = dts, result) %>% 
-    select(-value) 
-    
-    
-    organics_history %>% openxlsx::write.xlsx(.,"organics_history.xlsx", overwrite = T)
-
-    
-  return(organics_history)
-  
-}
-
-# Script for writing the metadata, with the query, just historical data,
-# and current month, future structures refers to same function where (t >= RToday)
-# Note: time window filter must be always before formulation against indices. 
-# the output of this function, named "organics_history.xlsx" located at organics_data path
-# must be BA&R refreshed to be pulled and trigger the transformation cycle. 
 
 
 
 # Transformation & Summarization ---------------------------------------------
 
+organics_summary <- function(){ 
+
 # Recursive Table
-organics <- openxlsx::read.xlsx("organics_history.xlsx") %>% as_tibble() %>% 
+organics_tidy <- openxlsx::read.xlsx("organics_updated.xlsx") %>% as_tibble() %>% 
   mutate(ref_date = as.Date(ref_date, origin = "1899-12-30")) %>% 
   filter(ref_date <= rollback(today()%m-%months(1),roll_to_first = T)) %>% 
   mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-  select(-index, -ship_to, -currency, -customer,
-         -'function', -product, -brand) %>% 
+  # select(-index, -ship_to, -currency, -customer,
+  #        -'function', -product, -brand) %>% 
   mutate(geo =  case_when(region == "US" ~ "North America",
                           region == "NA" ~ "North America",
                           region == "Canada" ~ "North America",
@@ -129,7 +96,7 @@ organics <- openxlsx::read.xlsx("organics_history.xlsx") %>% as_tibble() %>%
 
 
 # Summary
-org_summ <- organics %>%
+org_summ <- organics_tidy %>%
   group_by(geo, region, channel,
            type,
            ref_date,observation,month,period,quarter) %>%
@@ -157,5 +124,21 @@ org_summ <- organics %>%
 
 # after wider pivot, total rows= 1,440, there are 10 diff types of observations.
 
+ui_sec <- openxlsx::read.xlsx("ref/ui_sec.xlsx") %>% 
+  as_tibble() %>% mutate(region = ifelse(is.na(region),"NA",region))
 
 
+organics_summ <- left_join(ui_sec, org_summ,
+                      by = c("region", "channel")) %>% 
+  relocate(.before = region, geo)
+
+
+organics_summ %>% openxlsx::write.xlsx(.,"organics_summ.xlsx", overwrite = T)
+organics_tidy %>% openxlsx::write.xlsx(.,"organics_tidy.xlsx", overwrite = T)
+
+
+return(list(organics_summ = organics_summ,
+            organics_tidy = organics_tidy))
+
+
+}
