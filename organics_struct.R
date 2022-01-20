@@ -28,14 +28,10 @@ query_meta <- function(observ_year, observ_month){
   
   chasis<- file %>% 
     janitor::clean_names() %>% 
-    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    mutate(region = ifelse(is.na(region),"NAm",region)) %>% 
+    select(-years) %>% 
     mutate(observation = observ_year,
-           period = observ_month) %>% 
-    mutate(year_num = substr(observation, 3,4)) %>% 
-    mutate(years = paste0("FY",year_num)) %>% 
-    select(-year_num) %>% 
-    mutate(index = row_number()+1) 
-  
+           period = observ_month) 
   
   return(chasis)
   
@@ -52,7 +48,7 @@ timing <- function(period){
   
 }
 
-years   <- tibble(period = 2016  : year(today()))
+years   <- tibble(period = 2015  : year(today()))
 
 periods <-  map(years$period, 
                 timing) %>% 
@@ -63,7 +59,7 @@ periods <-  map(years$period,
 
 # BA&R Data Pulling  ---------------------------------------------------------
 
-organics_hist <- function(){ 
+organics <- function(){ 
   
   organics_structure <- map2(periods$observ_year, 
                              periods$observ_month,
@@ -71,13 +67,23 @@ organics_hist <- function(){
     
     map_dfr(., bind_rows) %>% 
     arrange(desc(observation)) %>% 
-    relocate(.before = observation, index) %>% 
-    
+    mutate(year_num = substr(observation, 3,4)) %>% 
+    mutate(year_num = as.double(year_num)) %>% 
+    mutate(year_num = ifelse(type == "sales_PY_mtd", year_num-1, year_num)) %>% 
+    mutate(year_num = ifelse(type == "sales_PY_qtd", year_num-1, year_num)) %>% 
+
+    mutate(years = paste0("FY",year_num)) %>% 
     mutate(month = match(period, month.name)) %>%  
     mutate(ref_date = make_date(year = observation, month = month, day = 1L)) %>% 
     mutate(quarter = quarter(ref_date)) %>% 
-    mutate(quarter = paste0("Q",quarter)) 
-  
+    mutate(quarter = paste0("Q",quarter)) %>% 
+    mutate(geo =  case_when(region == "US" ~ "North America",
+                            region == "NAm" ~ "North America",
+                            region == "Canada" ~ "North America",
+                            region == "EMEA ANZ" ~ "Europe & ANZ",
+                            region == "LAG" ~ "Latin America",
+                            region == "ASIA" ~ "Asia")) %>% 
+    relocate(.before = period, years)
   
   
   organics_history <- organics_structure %>% 
@@ -89,8 +95,8 @@ organics_hist <- function(){
     mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
     mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01")) %>%  
     relocate(.after = dts, result) %>% 
-    select(-value) 
-  
+    select(-value)
+
   organics_current <- organics_structure %>% 
     filter(ref_date == today()%m-%months(0) %>% rollback(roll_to_first = T)) %>%
     mutate(index = row_number()+1) %>% 
@@ -104,7 +110,7 @@ organics_hist <- function(){
   
   
   organics_history %>% openxlsx::write.xlsx(.,"ref/organics_history.xlsx", overwrite = T)
-  organics_current %>% openxlsx::write.xlsx(.,"organics_current.xlsx", overwrite = T)
+  organics_current %>% openxlsx::write.xlsx(.,"ETL/organics_current.xlsx", overwrite = T)
   
   
   return(list(organics_history = organics_history,
