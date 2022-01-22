@@ -29,7 +29,10 @@ setwd(organics_data)
 
 
 
-# EXECUTE AFTER BAR REFRESHAL 
+# EXECUTE AFTER BAR REFRESHAL ################################################
+
+
+
 organics_data_update <- function(){ 
 
 # Structure comming from this file, logic available at organics_struct.R  
@@ -37,16 +40,14 @@ organics_data_update <- function(){
   
   org_hist_upt <- openxlsx::read.xlsx("ETL/organics_updated.xlsx") %>% 
         as_tibble() %>% 
-        mutate(ref_date  = as.Date(ref_date, origin = "1899-12-30")) %>% 
-        mutate(exec_day  = as.Date(exec_day, origin = "1899-12-30")) %>% 
+        mutate(ref_date  = as.Date(ref_date, origin = "1899-12-30")) %>%
+        mutate(exec_day  = as.Date(exec_day, origin = "1899-12-30")) %>%
         mutate(region = ifelse(is.na(region),"NAm",region)) %>% 
-        mutate(timestamp = as.character(timestamp)) %>% 
+        mutate(timestamp = as.character(timestamp))  
+          # select(-index, -ship_to, -currency, -customer,
+          #        -'function', -product, -brand) 
+          
     
-    filter(observation >= 2016) 
-    
-         # select(-index, -ship_to, -currency, -customer,
-         #        -'function', -product, -brand)
-
 
   org_curr <- openxlsx::read.xlsx("ETL/organics_current.xlsx") %>%
             as_tibble() %>% 
@@ -54,10 +55,11 @@ organics_data_update <- function(){
         mutate(region = ifelse(is.na(region),"NAm",region)) %>% 
         select(-index, -ship_to, -currency, -customer,
                -'function', -product, -brand) %>% 
-       
         relocate(.before = region, geo) %>% 
+        # mutate(exec_day = as.Date(exec_day, origin = "1899-12-30"))
         mutate(exec_day = today()) %>% 
-        mutate(timestamp = timestamp())
+        mutate(timestamp = now()) %>% 
+        mutate(timestamp = as.character(timestamp))
 
 
   org_updated <- org_hist_upt  %>%
@@ -69,7 +71,8 @@ organics_data_update <- function(){
 # org_updated <- org_updated %>%
 #   anti_join(org_curr,
 #             by = c("geo","region","channel",
-#                    "type", "observation", "period"))
+#                    "type", "observation", "period")) %>% 
+#   mutate(timestamp = as.character(timestamp))
 
 
 
@@ -101,31 +104,20 @@ org_summ <- organics_tidy %>%
            ref_date,observation,month,period,quarter) %>%
   summarise(result = sum(result),.groups = "drop") %>% 
   pivot_wider(names_from = type, values_from = result) %>% 
-    rename(forecast_mtd = forecast_10_mtd,
-           forecast_qtd = forecast_10_qtd) %>% 
+    rename(forecast_mtd = forecast_10_mtd) %>% 
   select(ref_date, observation, month, period, quarter,
          geo, region, channel,
-         organic_mtd, sales_actual_mtd, forecast_mtd, OP_mtd, sales_PY_mtd,
-         organic_qtd, sales_actual_qtd, forecast_qtd, OP_qtd, sales_PY_qtd,
-         ) %>%   
-
-  # org_summ %>% select(ref_date, period, quarter, geo, region, channel,
-  #                     sales_PY_mtd, sales_PY_qtd)
-  
+         sales_actual_mtd,
+         forecast_mtd, OP_mtd, sales_PY_mtd,
+         sales_fx_mtd, sales_acqdiv_mtd) %>%   
+ 
   mutate(mtd_sales_vfcast = sales_actual_mtd - forecast_mtd,
          mtd_sales_vop    = sales_actual_mtd - OP_mtd,
          mtd_sales_vpy    = sales_actual_mtd - sales_PY_mtd) %>% 
   relocate(.after = forecast_mtd,mtd_sales_vfcast) %>% 
   relocate(.after = OP_mtd, mtd_sales_vop) %>% 
-  relocate(.after = sales_PY_mtd, mtd_sales_vpy) %>% 
-  
-  
-  mutate(qtd_sales_vfcast = sales_actual_qtd - forecast_qtd,
-         qtd_sales_vop    = sales_actual_qtd - OP_qtd,
-         qtd_sales_vpy    = sales_actual_qtd - sales_PY_qtd) %>% 
-  relocate(.after = forecast_qtd, qtd_sales_vfcast) %>% 
-  relocate(.after = OP_qtd, qtd_sales_vop) %>% 
-  relocate(.after = sales_PY_qtd, qtd_sales_vpy)
+  relocate(.after = sales_PY_mtd, mtd_sales_vpy)%>%
+  unite(region_channel, region, channel, sep = " / ")
   
 
 
@@ -137,8 +129,8 @@ ui_sec <- openxlsx::read.xlsx("ref/ui_sec.xlsx") %>%
 
 
 organics_summ <- left_join(ui_sec, org_summ,
-                      by = c("region", "channel")) %>% 
-  relocate(.before = region, geo)
+                      by = c("region_channel")) %>% 
+  relocate(.before = region_channel, geo)
 
 
 organics_summ %>% openxlsx::write.xlsx(.,
@@ -157,4 +149,26 @@ return(list(organics_summ = organics_summ,
 
 }
 
+
+
+
+
+
+
+# Organics Tester ----------------------------------------------------------
+
+
+
+
+# Organics ::: 
+
+observations <-  organics_summ %>%
+  filter(geo == "North America", observation == 2021, month == 11) %>%
+  select(region_channel, observation, month,sales_actual_mtd,
+         sales_PY_mtd, sales_PY_mtd, sales_fx_mtd, sales_acqdiv_mtd)
+
+
+orgs <- observations  %>% 
+         mutate(organic_usd = ((sales_actual_mtd - sales_PY_mtd - sales_fx_mtd - sales_acqdiv_mtd))) %>%
+         mutate(organic_perc= organic_usd/sales_PY_mtd)
 

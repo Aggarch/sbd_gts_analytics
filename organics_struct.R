@@ -24,7 +24,9 @@ setwd(organics_data)
 # Build all the queries needed to extract the last 5 years P&L Data. 
 query_meta <- function(observ_year, observ_month){ 
   
-  file <- openxlsx::read.xlsx("ref/tidy_organics_query.xlsx") %>% as_tibble()
+  file <- openxlsx::read.xlsx("ref/tidy_organics_query.xlsx") %>% as_tibble() %>% 
+    filter(!grepl("qtd", Type)) %>% filter(!grepl("organic", Type))
+    
   
   chasis<- file %>% 
     janitor::clean_names() %>% 
