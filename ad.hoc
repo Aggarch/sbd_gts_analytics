@@ -1,0 +1,12 @@
+# Ad hoc
+
+nominal <- function(nom){
+  
+  
+  TRM = 3950
+  
+  result = nom * TRM
+  
+  return(result)
+  
+}

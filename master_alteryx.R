@@ -12,9 +12,9 @@ consolidations <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growt
 bottom_up      <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
 
 
-# opendir <- function(directory = getwd()){
-#   system(sprintf('open %s', shQuote(directory)))
-# }
+opendir <- function(directory = getwd()){
+  system(sprintf('open %s', shQuote(directory)))
+}
 
 
 # OPERATING PLAN  ---------------------------------------------------------

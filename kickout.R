@@ -12,7 +12,7 @@ hfm_dmt_maps <- "//americas.swk.pri/apps/Enterprise/FT/Prod/P-BODSETL/PRD_Maps"
 setwd(kout_fc11)
 
 
-timespam <- today() %>%
+timespam <- today()%>%
   as_tibble() %>% 
     mutate(value = value -1) %>% 
   mutate(value = as.character(value)) %>% 
@@ -23,6 +23,7 @@ timespam <- today() %>%
 
 file <- list.files() %>% as_tibble %>% 
   filter(grepl("NA",value)) %>% 
+  filter(grepl("C11",value)) %>% 
   filter(grepl(timespam, value)) %>% 
   pull()
 

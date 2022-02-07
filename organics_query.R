@@ -152,9 +152,6 @@ return(list(organics_summ = organics_summ,
 
 
 
-
-
-
 # Organics Tester ----------------------------------------------------------
 
 
@@ -162,13 +159,13 @@ return(list(organics_summ = organics_summ,
 
 # Organics ::: 
 
-observations <-  organics_summ %>%
-  filter(geo == "North America", observation == 2021, month == 11) %>%
-  select(region_channel, observation, month,sales_actual_mtd,
-         sales_PY_mtd, sales_PY_mtd, sales_fx_mtd, sales_acqdiv_mtd)
-
-
-orgs <- observations  %>% 
-         mutate(organic_usd = ((sales_actual_mtd - sales_PY_mtd - sales_fx_mtd - sales_acqdiv_mtd))) %>%
-         mutate(organic_perc= organic_usd/sales_PY_mtd)
+# observations <-  organics_summ %>%
+#   filter(geo == "North America", observation == 2021, month == 11) %>%
+#   select(region_channel, observation, month,sales_actual_mtd,
+#          sales_PY_mtd, sales_PY_mtd, sales_fx_mtd, sales_acqdiv_mtd)
+# 
+# 
+# orgs <- observations  %>% 
+#          mutate(organic_usd = ((sales_actual_mtd - sales_PY_mtd - sales_fx_mtd - sales_acqdiv_mtd))) %>%
+#          mutate(organic_perc= organic_usd/sales_PY_mtd)
 

@@ -89,7 +89,7 @@ organics <- function(){
   
   
   organics_history <- organics_structure %>% 
-    filter(ref_date <= today()%m-%months(1) %>% rollback(roll_to_first = T)) %>% 
+    # filter(ref_date <= today()%m-%months(1) %>% rollback(roll_to_first = T)) %>% 
     mutate(index = row_number()+1) %>% 
     mutate(index = as.character(index)) %>% 
     mutate(result = '=HsGetValue("PRD_OAC_RPTSBD01","Entity#"&D2,"Scenario#"&E2,"Years#"&M2,"Period#"&N2,"Account#"&F2,"Currency#"&G2,"Total Product#"&H2,"Total Customer#"&I2,"Function#"&J2,"DTS#"&O2,"Total Ship-to Geography#"&K2,"Total Brand#"&L2)') %>% 
@@ -99,24 +99,26 @@ organics <- function(){
     relocate(.after = dts, result) %>% 
     select(-value)
 
-  organics_current <- organics_structure %>% 
-    filter(ref_date == today()%m-%months(0) %>% rollback(roll_to_first = T)) %>%
-    mutate(index = row_number()+1) %>% 
-    mutate(index = as.character(index)) %>% 
-    mutate(result = '=HsGetValue("PRD_OAC_RPTSBD01","Entity#"&D2,"Scenario#"&E2,"Years#"&M2,"Period#"&N2,"Account#"&F2,"Currency#"&G2,"Total Product#"&H2,"Total Customer#"&I2,"Function#"&J2,"DTS#"&O2,"Total Ship-to Geography#"&K2,"Total Brand#"&L2)') %>% 
-    mutate(result = str_replace_all(result,'[[:digit:]]+',index)) %>% 
-    mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
-    mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01")) %>%  
-    relocate(.after = dts, result) %>% 
-    select(-value) 
+  # organics_current <- organics_structure %>% 
+  #   filter(ref_date == today()%m-%months(0) %>% rollback(roll_to_first = T)) %>%
+  #   mutate(index = row_number()+1) %>% 
+  #   mutate(index = as.character(index)) %>% 
+  #   mutate(result = '=HsGetValue("PRD_OAC_RPTSBD01","Entity#"&D2,"Scenario#"&E2,"Years#"&M2,"Period#"&N2,"Account#"&F2,"Currency#"&G2,"Total Product#"&H2,"Total Customer#"&I2,"Function#"&J2,"DTS#"&O2,"Total Ship-to Geography#"&K2,"Total Brand#"&L2)') %>% 
+  #   mutate(result = str_replace_all(result,'[[:digit:]]+',index)) %>% 
+  #   mutate(result = str_replace_all(result,'/[[:digit:]]+',"/1000000")) %>% 
+  #   mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01")) %>%  
+  #   relocate(.after = dts, result) %>% 
+  #   select(-value) 
   
   
   organics_history %>% openxlsx::write.xlsx(.,"ref/organics_history.xlsx", overwrite = T)
-  organics_current %>% openxlsx::write.xlsx(.,"ETL/organics_current.xlsx", overwrite = T)
+  # organics_current %>% openxlsx::write.xlsx(.,"ETL/organics_current.xlsx", overwrite = T)
   
   
-  return(list(organics_history = organics_history,
-              organics_current = organics_current))
+  return(list(organics_history = organics_history
+              # organics_current = organics_current
+              
+              ))
   
   
 }
@@ -129,3 +131,62 @@ organics <- function(){
 # organics_history was recently refreshed we can go directly to summary section. 
 
 # organics_history.xlsx contains history + one month 
+
+
+# Summarization -----------------------------------------------------------
+
+
+
+organics_summary <- function(){ 
+  
+  # Recursive Table
+  org_summ <- openxlsx::read.xlsx("ref/organics_history.xlsx") %>% as_tibble() %>% 
+    mutate(ref_date = as.Date(ref_date, origin = "1899-12-30")) %>% 
+    filter(ref_date <= rollback(today()%m-%months(1),roll_to_first = T)) %>% 
+    mutate(region = ifelse(is.na(region),"NAm",region)) %>% 
+    group_by(geo, region, channel,
+             type,
+             ref_date,observation,month,period,quarter) %>%
+    summarise(result = sum(result),.groups = "drop") %>% 
+    pivot_wider(names_from = type, values_from = result) %>% 
+    rename(forecast_mtd = forecast_10_mtd) %>% 
+    select(ref_date, observation, month, period, quarter,
+           geo, region, channel,
+           sales_actual_mtd,
+           forecast_mtd, OP_mtd, sales_PY_mtd,
+           sales_fx_mtd, sales_acqdiv_mtd) %>%   
+    
+    mutate(mtd_sales_vfcast = sales_actual_mtd - forecast_mtd,
+           mtd_sales_vop    = sales_actual_mtd - OP_mtd,
+           mtd_sales_vpy    = sales_actual_mtd - sales_PY_mtd) %>% 
+    relocate(.after = forecast_mtd,mtd_sales_vfcast) %>% 
+    relocate(.after = OP_mtd, mtd_sales_vop) %>% 
+    relocate(.after = sales_PY_mtd, mtd_sales_vpy)%>%
+    unite(region_channel, region, channel, sep = " / ")
+  
+  
+  
+  # after wider pivot, total rows= 1,440, there are 10 diff types of observations.
+  # organize with ui-sec as original. 
+  
+  ui_sec <- openxlsx::read.xlsx("ref/ui_sec.xlsx") %>% 
+    as_tibble() %>% mutate(region = ifelse(is.na(region),"NAm",region))
+  
+  
+  organics_summ <- left_join(ui_sec, org_summ,
+                             by = c("region_channel")) %>% 
+    relocate(.before = region_channel, geo)
+  
+  
+  organics_summ %>% openxlsx::write.xlsx(.,
+                                         "PBI/organics_summ.xlsx",
+                                         sheetName = "summary",  overwrite = T)
+  
+  
+
+  
+  
+  return(list(organics_summ = organics_summ))
+  
+}
+
