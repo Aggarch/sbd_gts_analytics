@@ -1,3 +1,4 @@
+# Copy & Paste files recursively 
 
 
 library(tidyverse)
@@ -9,7 +10,7 @@ library(zoo)
 
 #  Location
 bottom_up  <- "C:/Users/AEG1130/Stanley Black & Decker/Heavner, Bill - Growth Initiatives/Bottoms Up Detail" 
-
+fpa <- "C:\Users\AEG1130\Stanley Black & Decker\GTS Group FP&A - Documents" 
 
 
 # Actuals Update Function
@@ -29,7 +30,7 @@ actuals_update <- function(){
     mutate(files = map(.$path, list.files)) %>% 
     unnest(cols = files) %>% 
     mutate(fullp = paste0(path,"/",files)) %>% 
-    select(-second,-third )%>%
+    select(-second,-third ) %>%
   
     rename(monthyear = fourth) %>% 
     mutate(path2 = str_replace_all(path, "F10", "OP22")) %>% 
