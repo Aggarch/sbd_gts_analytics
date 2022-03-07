@@ -78,18 +78,17 @@ files <- read.csv(rates) %>%
 # Ideal structure calculating 
 
 pull_long <- map(resource$rates,f) %>% 
-  map_dfr(., bind_rows)
+  map_dfr(., bind_rows) %>% 
+  mutate(year = substr(date,0,4))
 
   
 wider_pull <- pull_long %>% select(-week) %>% 
   pivot_wider(names_from = date, values_from = spot_rate)
   
-
-
-setwd()
+setwd(model)
 
 struct %>% left_join(wider_pull, by = "from_ccy") %>% 
-  openxlsx::write.xlsx("rates_fx.xlsx")
+  openxlsx::write.xlsx("rates_fx.xlsx", overwrite = T)
 
 
 
