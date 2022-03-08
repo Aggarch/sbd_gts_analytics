@@ -130,12 +130,14 @@ organics <- function(){
 # must be BA&R refreshed to be pulled and trigger the transformation cycle. 
 # organics_history was recently refreshed we can go directly to summary section. 
 
+organics()
+
 # organics_history.xlsx contains history + one month 
 
 
 # Summarization -----------------------------------------------------------
 
-
+# Refresh BAR/HFM {ref/organics_history.xlsx} B4 running : 
 
 organics_summary <- function(){ 
   
@@ -190,3 +192,6 @@ organics_summary <- function(){
   
 }
 
+# Wrangling Algorithm / PBI dashboard Input.
+
+organics_summary()
