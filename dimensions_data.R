@@ -1,42 +1,55 @@
 # Data Dimensions : 
 
-library(readxlsb)
+library(readxl)
 library(tidyverse)
 
-dimen <- "C:/Users/AEG1130/Documents/DDIMENS" 
-setwd(dimen)
+dimensions <- "C:/Users/AEG1130/Documents/DDIMENS" 
+dimens <- "C:/Users/AEG1130/Documents/dimension" 
+
+setwd(dimensions)
+
 
  resources <- list.files() %>%
   as_tibble() %>% 
-  mutate(key = str_replace_all(value, ".xlsb","")) %>% 
+  mutate(key = str_replace_all(value, ".xlsx","")) %>% 
   mutate(key = str_replace_all(key, "_GTS_GEM","")) %>% 
-   filter(!grepl(c("DM"),key)) %>% 
-   filter(!grepl(c("Growth"),key)) %>% 
-   filter(!grepl(c("Commit"),key)) %>% 
-   filter(!grepl(c("Vendor"),key)) %>% 
-   filter(!grepl(c("Version"),key)) %>% 
-   filter(!grepl(c("Frequency"),key)) %>% 
-   filter(!grepl(c("Geography"),key)) %>% 
-   filter(!grepl(c("Period"),key))
+   mutate(sheet = map(.$value, excel_sheets)) %>% 
+   unnest(cols = c(sheet))
  
  
- 
- 
-dimens <- function(value, key){ 
+dimens <- function(value, key, sheet){ 
 
-data <- read_xlsb(value,key) %>% as_tibble() %>% 
+data <- openxlsx::read.xlsx(value,sheet) %>% 
+  as_tibble() %>% 
   mutate(dimension = key) %>%
+  mutate(sub.dimension = sheet) %>%
   janitor::clean_names() %>% 
-  unite("alpha", x1:column_135,
+   janitor::remove_empty(., which = "cols") %>% 
+  unite("structure", x1:everything(),
         na.rm = TRUE, remove = FALSE, sep = "-") %>%
-  select(dimension,member_type, name, description,
-         pln_level, generation,alpha)
+  mutate(structure = str_replace_all(structure,"-Parent","")) %>% 
+  mutate(structure = str_replace_all(structure,"-Base",""))%>%
+  mutate(structure = str_replace_all(structure,"-TRUE","")) %>% 
+  mutate(structure = str_replace_all(structure,"-FALSE","")) %>% 
+  select(!contains("x")) %>% 
+  relocate(dimension, sub_dimension, name,
+           description, structure, everything())
 
- 
+
 
 return(data)
 
 }
 
-tables <- map2(resources$value, resources$key, dimens) 
+tables <- resources %>% pmap(dimens) %>% 
+          map_dfr(.,bind_rows) %>% 
+  select(-pln_member_type, -currency, -base)
+
+
+setwd(dimens)
+
+tables %>% 
+  openxlsx::write.xlsx(.,"dimensions_unite.xlsx", overwrite = T)
+
+
 

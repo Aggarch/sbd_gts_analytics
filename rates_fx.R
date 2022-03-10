@@ -1,10 +1,12 @@
 
 # FX rates Sales Impact #
 
-fx    <- "//americas.swk.pri/Apps/Enterprise/Reval/IntRptg/FXRates/Reval/Loaded" 
-model <- "C:/Users/AEG1130/Documents/fx"   
-docs  <- "C:/Users/AEG1130/Documents" 
+fx      <- "//americas.swk.pri/Apps/Enterprise/Reval/IntRptg/FXRates/Reval/Loaded" 
+fx_last <- "//americas.swk.pri/Apps/Enterprise/Reval/IntRptg/FXRates/Reval" 
+model   <- "C:/Users/AEG1130/Documents/fx"   
+docs    <- "C:/Users/AEG1130/Documents" 
 
+library(tidyverse)
 
 # Rates & Keep Bzns Days
 
@@ -21,7 +23,7 @@ rate_files <- list.files() %>% as_tibble() %>%
 
 setwd(docs)
 
-fcalend <- openxlsx::read.xlsx("fiscal_calendar.xlsx") %>% 
+fcalend <- openxlsx::read.xlsx("fx/fiscal_calendar.xlsx") %>% 
   janitor::clean_names() %>% 
   as_tibble() %>% 
   select(!contains("left"),-report_date,-week_2) %>% 
@@ -81,6 +83,10 @@ pull_long <- map(resource$rates,f) %>%
   map_dfr(., bind_rows) %>% 
   mutate(year = substr(date,0,4))
 
+last_info_date<- pull_long %>%
+  mutate(date = as.Date(date,
+                        origin = "1899-12-30")) %>%
+  filter(date == max(date)) %>% distinct(date)
   
 wider_pull <- pull_long %>% select(-week) %>% 
   pivot_wider(names_from = date, values_from = spot_rate)
