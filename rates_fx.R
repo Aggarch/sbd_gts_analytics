@@ -9,6 +9,12 @@ docs    <- "C:/Users/AEG1130/Documents"
 library(tidyverse)
 library(openxlsx)
 
+
+
+# SBD Treasury Rates Wrangling --------------------------------------------
+
+
+
 # Rates & Keep Bzns Days
 
 SBD_FX         <- function(){ 
@@ -138,15 +144,15 @@ wider_pull <- pull_long %>% select(from_ccy, date, inverse_spot_rate) %>%
 # Verify desire order - - - - -- - -- -- - - -
 # FX Construct 
 
-model   <- "C:/Users/AEG1130/Documents/fx"   
-setwd(model)
-
-order.cur <- openxlsx::read.xlsx("GTS_FX_2022_FEB28_SPOT_03022022@7PM.xlsx",
-                                 sheet = "SBD Rates 2022")
-
-struct <- order.cur %>% as_tibble() %>% select(X2,X3) %>% filter(!is.na(X2)) %>% 
-  rename(from_ccy = X2,
-         currency = X3)
+# model   <- "C:/Users/AEG1130/Documents/fx"   
+# setwd(model)
+# 
+# order.cur <- openxlsx::read.xlsx("GTS_FX_2022_FEB28_SPOT_03022022@7PM.xlsx",
+#                                  sheet = "SBD Rates 2022")
+# 
+# struct <- order.cur %>% as_tibble() %>% select(X2,X3) %>% filter(!is.na(X2)) %>% 
+#   rename(from_ccy = X2,
+#          currency = X3)
 
 
 wider_pull <- struct %>% left_join(wider_pull, by = "from_ccy")
@@ -163,7 +169,7 @@ return(wider_pull)
 
 
 
-# Querying, to be able plotting --------------
+# Querying, to be able plotting :::::::::::::::::::::::::::::::::::::::::::
 # Examples time windows : Excel output
 
 
@@ -223,3 +229,9 @@ return(list(daily_rates   =  daily_data,
             monthly_rates =  monthly_rates))
 
 }
+
+
+
+# BAR Scenarios For FX Impact Measurement ---------------------------------
+
+
