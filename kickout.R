@@ -13,7 +13,8 @@ mapping_fold <- "C:/Users/AEG1130/Documents/mapping"
 
 # Kickout Files 
 
-kickout <- function(){ 
+superKick <- function(){ 
+
 
 setwd(kout_fc11)
 
@@ -53,27 +54,19 @@ KICK <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS, BAR_ENTITY, ACCT,AMT) %
   mutate(BAR_ENT = str_replace_all(BAR_ENTITY, "E",""))
 
 total_kick <- sum(KICK$AMT)
-entities   <- KICK$BAR_ENTITY
 
-print(paste("Total to be Kicked out :", total_kick))
-
-print(entities)
-
-return(KICK)
-
-
-}
 
 # Connect to the FDM File find ACCT in Src Acct to pick HFM Acct
 # Open HFM DMT Files and search for the HFM account. 
 
-kick <- kickout()
+
+
 
 ############ FDM File 
 
 
 # Make sure the FDM Files are readable;  
-fdm_hfm_dmt <- function(){ 
+
   
 setwd(mapping_fold)
 
@@ -89,8 +82,8 @@ fdm <- fdm_one %>% bind_rows(fdm_one) %>% janitor::clean_names()
 # Entities of Interest: 
 
 fdm_focus <- fdm %>%
-  filter(entity %in% kick$BAR_ENT) %>% 
-  filter(source_account %in% kick$ACCT) 
+  filter(entity %in% KICK$BAR_ENT) %>% 
+  filter(source_account %in% KICK$ACCT) 
 
 
 ############# HFM DMT ::: 
@@ -118,41 +111,46 @@ hfm_account <- hfm_tables[[3]]
 
 hfm_function <- hfm_tables[[5]]
 
+
+
 function_hfm <- hfm_function %>% filter(HFM_C1 %in% fdm_focus$custom1)
 
 
 
-fdm_source_account <- fdm_focus %>% filter(account %in% hfm$HFM_ACCOUNT) %>% 
+fdm_source_account <- fdm_focus %>%
+  filter(account %in% hfm_account$HFM_ACCOUNT) %>% 
   select(entity, account, source_account, custom1) %>%
   distinct() %>% 
   left_join(function_hfm %>% select(HFM_C1, BAR_FUNCTION),
             by = c("custom1" = "HFM_C1")) %>% 
   rename(HFM_C1 = custom1) %>% 
-  mutate(source_account = paste0("000",source_account)) 
+  mutate(source_account = paste0("000",source_account))
+
+
+HFM <- hfm_account %>% filter(HFM_ACCOUNT %in% fdm_focus$account) %>% 
+  select(-RUNID,-LOADDATETIME, -JOBNAME, -BAR_FUNCTION)
 
 
 
 #ACN/DMT input
 
 
-dmt<- hfm %>% left_join(fdm_source_account,
+DMT_DETAILED <- HFM %>% left_join(fdm_source_account,
                   by =c("HFM_ACCOUNT" = "account"))
 
 
-DMT_INSERT <- dmt %>%
-  select(ACCT = entity, account, source_account,
+DMT_INSERT   <- dmt %>%
+  select(ACCT = source_account , 
          BAR_ACCOUNT,HFM_C1, BAR_FUNCTION)
 
 
-return(list(dmt, DMT_INSERT))
+
+return(list(KICK, DMT_DETAILED, DMT_INSERT))
 
 }
 
-fdm_hfm_dmt()
-
+superKick()
 
 # Open DMT 
-setwd("//americas.swk.pri/apps/Enterprise/FT/Prod/P-BODSETL/PRD_DMT/2013")
-
-example <- read_excel("ACN Data Construction Tool.xlsm", sheet = "test")
+# Citrix Script to run given a specific target. 
 
