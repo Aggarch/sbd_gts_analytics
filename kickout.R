@@ -8,35 +8,21 @@ library(readxl)
 
 kout_fc11    <-	"//americas.swk.pri/Apps/Enterprise/FT/Prod/P-BODSETL/PRD_Kout/C11"
 hfm_dmt_maps <- "//americas.swk.pri/apps/Enterprise/FT/Prod/P-BODSETL/PRD_Maps"
+KO           <- "C:/Users/AEG1130/Documents/mapping/kickouts"
 mapping_fold <- "C:/Users/AEG1130/Documents/mapping"
+
 
 
 # Kickout Files 
 
-superKick <- function(){ 
+kickout_account <- function(){ 
 
 
 setwd(kout_fc11)
 
-timespam <- today()%>%
-  as_tibble() %>% 
-    mutate(value = value -1) %>% 
-  mutate(value = as.character(value)) %>% 
-  mutate(value = str_remove_all(value,"-")) %>% 
-  pull()
-
-current <- today()%>%
-  as_tibble() %>% 
-  mutate(value = as.character(value)) %>% 
-  mutate(value = str_remove_all(value,"-")) %>% 
-  pull()
-
-tw <- c(timespam, current)
-
 file <- list.files() %>% as_tibble %>% 
   filter(grepl("NA",value)) %>% 
   filter(grepl("C11",value)) %>% 
-  filter(str_detect(value, tw)) %>% 
   mutate(date = substr(value,27,34)) %>% 
   mutate(date = as.numeric(date)) %>% 
   filter(date == max(date)) %>% 
@@ -49,14 +35,18 @@ target <- read.csv(file) %>% as_tibble
 
 setwd(mapping_fold)
 
-target %>% openxlsx::write.xlsx("last_kick.xlsx", overwrite = T)
+target %>% openxlsx::write.xlsx("last_kick_account.xlsx", overwrite = T)
 
-KICK <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS, BAR_ENTITY, ACCT,AMT, BAR_ACCT) %>% 
+KICK_ACCOUNT <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS, BAR_ENTITY, ACCT,AMT, BAR_ACCT) %>% 
   mutate(ACCT = as.character(ACCT),
          AMT  = as.numeric(AMT)) %>% 
-  mutate(BAR_ENT = str_replace_all(BAR_ENTITY, "E",""))
+  mutate(BAR_ENT = str_replace_all(BAR_ENTITY, "E","")) %>% 
+  filter(grepl("ACCT",DI_ERRORCOLUMNS))
 
-total_kick <- sum(KICK$AMT)
+total_kick_account <- sum(KICK_ACCOUNT$AMT)
+
+total_kick_entity <- sum(KICK_ENT$AMT)
+
 
 
 # Connect to the FDM File find ACCT in Src Acct to pick HFM Acct
@@ -71,10 +61,10 @@ total_kick <- sum(KICK$AMT)
   
 setwd(mapping_fold)
 
-fdm_dos <- openxlsx::read.xlsx("WWPT_SAP_NA_US_2_Actual_C11.xlsx") %>%
+fdm_dos <- openxlsx::read.xlsx("WWPT_SAP_NA_US_2_Actual.xlsx") %>%
   as_tibble() %>% mutate(version = "fdm_dos")
 
-fdm_one <- openxlsx::read.xlsx("WWPT_SAP_NA_US_Actual_C11.xlsx") %>% 
+fdm_one <- openxlsx::read.xlsx("WWPT_SAP_NA_US_Actual.xlsx") %>% 
   as_tibble() %>% mutate(version = "fdm_one")
 
 
@@ -160,12 +150,176 @@ return(list(TO_BE_KICKOUT = KICK,
             TOTAL_TO_KICK = total_kick,
             DMT_ACN_INPUT = DMT_INSERT))
 
+}
 
+kickout_entity <- function(){ 
+  
+  
+  setwd(kout_fc11)
+  
+  file <- list.files() %>% as_tibble %>% 
+    filter(grepl("NA",value)) %>% 
+    filter(grepl("C11",value)) %>% 
+    mutate(date = substr(value,27,34)) %>% 
+    mutate(date = as.numeric(date)) %>% 
+    filter(date == max(date)) %>% 
+    pull(value)
+  
+  # Add recursive filter to make this sensitive/Recursive to book? 
+  # PCA = P&L /// FISL = BSheet 
+  
+  target <- read.csv(file) %>% as_tibble
+  
+  setwd(mapping_fold)
+  
 
+  KICK_ENT <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS,
+                                BAR_ENTITY, ACCT,AMT, BAR_ACCT,
+                                COCODE, BUSAREA, CURRKEY) %>% 
+    mutate(ACCT = as.character(ACCT),
+           AMT  = as.numeric(AMT)) %>% 
+    mutate(BAR_ACT = str_replace_all(BAR_ACCT, "A","")) %>% 
+    filter(grepl("ENTITY",DI_ERRORCOLUMNS)) %>% 
+    mutate(ACCT = paste0("000",ACCT))
+  
+  total_kick_entity <- sum(KICK_ENT$AMT)
+  
+  
+  # Connect to the FDM File find ACCT in Src Acct to pick HFM Acct
+  # Open HFM DMT Files and search for the HFM account. 
+  
+  
+  ############ FDM File 
+  
+  
+  # Make sure the FDM Files are readable;  
+  
+  
+  setwd(mapping_fold)
+  
+  fdm_dos <- openxlsx::read.xlsx("WWPT_SAP_NA_US_2_Actual.xlsx") %>%
+    as_tibble() %>% mutate(version = "fdm_dos")
+  
+  fdm_one <- openxlsx::read.xlsx("WWPT_SAP_NA_US_Actual.xlsx") %>% 
+    as_tibble() %>% mutate(version = "fdm_one")
+  
+  
+  fdm <- fdm_one %>% bind_rows(fdm_dos) %>% janitor::clean_names()
+  
+  # Entities of Interest: 
+  
+  fdm_focus <- fdm %>%
+    mutate(source_account = paste0("000",source_account)) %>% 
+    filter(source_account %in% KICK_ENT$ACCT) %>% 
+    filter(account %in% KICK_ENT$BAR_ACT) 
+  
+  
+  
+  ############# HFM DMT ::: 
+  
+  HFM_rec <- list.files() %>%
+    as_tibble() %>% 
+    filter(value =="HFM_DMT.xlsx") %>% 
+    mutate(sheet = map(.$value, excel_sheets)) %>% 
+    unnest(cols = c(sheet)) %>% 
+    mutate(dimension = str_sub(sheet,start = 9L, end = 30))
+  
+  
+  reader <- function(value, sheet,dimension){ 
+    
+    data <- openxlsx::read.xlsx(value,sheet) %>% 
+      as_tibble() %>% mutate(dimension = dimension)
+    
+    return(data)
+    
+  }
+  
+  hfm_tables <- HFM_rec %>% pmap(reader)
+  
+  hfm_entity <- hfm_tables[[1]]
+  
+  hfm_account <- hfm_tables[[3]]
+  
+  hfm_function <- hfm_tables[[5]]
+  
+  
+  function_hfm <- hfm_function %>% filter(HFM_C1 %in% fdm_focus$custom1)
+  entity_hfm <- hfm_entity
+  
+  
+  # Finding Match in HFM_DMT Maps::: 
+  fdm_source_entity <- fdm_focus %>%
+    filter(entity %in% hfm_entity$HFM_ENTITY) %>% 
+    # select(entity, account, source_account, custom1) %>%
+    select(entity,custom1,source_account) %>%
+    distinct() %>% 
+    left_join(entity_hfm %>% select(HFM_ENTITY, BAR_ENTITY),
+              by = c("entity" = "HFM_ENTITY")) %>% 
+    rename(HFM_C1 = custom1) 
+    # mutate(source_account = paste0("000",source_account))
+  
+  
+  HFM <- hfm_entity %>% filter(HFM_ENTITY %in% fdm_focus$entity) %>% 
+    select(-RUNID,-LOADDATETIME, -JOBNAME,-dimension) 
+
+  
+  
+  
+  #ACN/DMT input
+  
+  
+  DMT_DETAILED <- HFM %>% left_join(fdm_source_entity %>%
+                          select(-BAR_ENTITY),
+                          by =c("HFM_ENTITY" = "entity")) 
+
+  
+  DMT_INSERT   <- DMT_DETAILED %>%
+    select(
+           HFM_ENTITY,
+           BAR_ENTITY,source_account) %>% 
+    left_join(KICK_ENT %>%
+                select(ACCT, COCODE, BUSAREA, CURRKEY),
+              by = c("source_account" = "ACCT")) %>% 
+    select(-source_account) %>% 
+    distinct() %>% 
+    left_join(HFM %>%
+                select(BAR_PRODUCT,
+                       BAR_CUSTOMER,
+                       HFM_ENTITY), by = "HFM_ENTITY")
+  
+
+  
+  print(paste("DESTINY TABLE: ", "'EPM_C11_BASICENTITY_LKP_NA+"))
+  
+  
+  return(list(TO_BE_KICKOUT = KICK_ENT,
+              TOTAL_TO_KICK = total_kick_entity,
+              DMT_ACN_INPUT = DMT_INSERT))
+  
 }
 
 
-kickOut <- superKick()
+kick_storage <- function(){ 
+
+setwd(KO)  
+  
+last_kick_account <- paste0("kickout_account_",today(),".RDS") %>% as_tibble() %>% 
+  mutate(value = str_replace_all(value, "-","_"))
+
+last_kick_entity <- paste0("kickout_entity_",today(),".RDS") %>% as_tibble() %>% 
+  mutate(value = str_replace_all(value, "-","_"))
+
+  kickout_account() %>% saveRDS(last_kick_account$value)
+  kickout_entity()  %>% saveRDS(last_kick_entity$value)
+  
+                      
+list.files() %>% as_tibble() %>% filter(grepl(".RDS",value))
+
+print(last_kick_account)
+print(last_kick_entity)
+
+  
+}  
 
 # Open DMT 
 # Citrix Script to run given a specific target. 
