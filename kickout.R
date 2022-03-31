@@ -35,7 +35,6 @@ target <- read.csv(file) %>% as_tibble
 
 setwd(mapping_fold)
 
-target %>% openxlsx::write.xlsx("last_kick_account.xlsx", overwrite = T)
 
 KICK_ACCOUNT <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS, BAR_ENTITY, ACCT,AMT, BAR_ACCT) %>% 
   mutate(ACCT = as.character(ACCT),
@@ -44,8 +43,6 @@ KICK_ACCOUNT <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS, BAR_ENTITY, ACC
   filter(grepl("ACCT",DI_ERRORCOLUMNS))
 
 total_kick_account <- sum(KICK_ACCOUNT$AMT)
-
-total_kick_entity <- sum(KICK_ENT$AMT)
 
 
 
@@ -73,8 +70,8 @@ fdm <- fdm_one %>% bind_rows(fdm_dos) %>% janitor::clean_names()
 # Entities of Interest: 
 
 fdm_focus <- fdm %>%
-  filter(entity %in% KICK$BAR_ENT) %>% 
-  filter(source_account %in% KICK$ACCT) 
+  filter(entity %in% KICK_ACCOUNT$BAR_ENT) %>% 
+  filter(source_account %in% KICK_ACCOUNT$ACCT) 
 
 
 ############# HFM DMT ::: 
@@ -136,18 +133,19 @@ DMT_INSERT   <- DMT_DETAILED %>%
          BAR_ACCOUNT,
          HFM_C1, 
          BAR_FUNCTION) %>% 
-  left_join(KICK %>%
+  left_join(KICK_ACCOUNT %>%
               select(BAR_ENT, BAR_ENTITY),
             by = c("HFM_ENTITY" = "BAR_ENT")) %>% 
   distinct() %>% 
   relocate(.before = HFM_ACCOUNT, BAR_ENTITY)
 
 
-print(paste("DESTINY TABLE: ", "EPM_C11_ACCOUNT_FUNC_LKP_NA+"))
+recom <- paste("DESTINY TABLE: ", "EPM_C11_ACCOUNT_FUNC_LKP_NA+  ,", "IF TOTAL_TO_KICK = 0, NO ACTION NEEDED")
 
 
-return(list(TO_BE_KICKOUT = KICK,
-            TOTAL_TO_KICK = total_kick,
+return(list(TO_BE_KICKOUT = KICK_ACCOUNT,
+            TOTAL_TO_KICK = total_kick_account,
+            NOTES = recom,
             DMT_ACN_INPUT = DMT_INSERT))
 
 }
@@ -170,12 +168,14 @@ kickout_entity <- function(){
   
   target <- read.csv(file) %>% as_tibble
   
+  
   setwd(mapping_fold)
   
 
-  KICK_ENT <- target %>% select(BAR_FUNCTION, DI_ERRORCOLUMNS,
-                                BAR_ENTITY, ACCT,AMT, BAR_ACCT,
-                                COCODE, BUSAREA, CURRKEY) %>% 
+  KICK_ENT <- target %>%
+    select(BAR_FUNCTION, DI_ERRORCOLUMNS,
+           BAR_ENTITY, ACCT,AMT, BAR_ACCT,
+           COCODE, BUSAREA, CURRKEY,COSTCTR) %>%
     mutate(ACCT = as.character(ACCT),
            AMT  = as.numeric(AMT)) %>% 
     mutate(BAR_ACT = str_replace_all(BAR_ACCT, "A","")) %>% 
@@ -208,95 +208,51 @@ kickout_entity <- function(){
   
   # Entities of Interest: 
   
+  busarea <- KICK_ENT$BUSAREA %>% as_tibble() %>% distinct()
+  
   fdm_focus <- fdm %>%
     mutate(source_account = paste0("000",source_account)) %>% 
     filter(source_account %in% KICK_ENT$ACCT) %>% 
-    filter(account %in% KICK_ENT$BAR_ACT) 
-  
-  
-  
-  ############# HFM DMT ::: 
-  
-  HFM_rec <- list.files() %>%
-    as_tibble() %>% 
-    filter(value =="HFM_DMT.xlsx") %>% 
-    mutate(sheet = map(.$value, excel_sheets)) %>% 
-    unnest(cols = c(sheet)) %>% 
-    mutate(dimension = str_sub(sheet,start = 9L, end = 30))
-  
-  
-  reader <- function(value, sheet,dimension){ 
+    filter(account %in% KICK_ENT$BAR_ACT) %>% 
+    mutate(busarea = str_detect(source_icp, busarea$value)) %>%
+    filter(busarea == T)
     
-    data <- openxlsx::read.xlsx(value,sheet) %>% 
-      as_tibble() %>% mutate(dimension = dimension)
-    
-    return(data)
-    
-  }
   
-  hfm_tables <- HFM_rec %>% pmap(reader)
-  
-  hfm_entity <- hfm_tables[[1]]
-  
-  hfm_account <- hfm_tables[[3]]
-  
-  hfm_function <- hfm_tables[[5]]
+  fdm_entity <- fdm_focus %>% select(source_account, entity)
   
   
-  function_hfm <- hfm_function %>% filter(HFM_C1 %in% fdm_focus$custom1)
-  entity_hfm <- hfm_entity
+  entity_map <- KICK_ENT %>% 
+    left_join(fdm_entity, by = c("ACCT" = "source_account")) %>% 
+    select(-BAR_FUNCTION, -DI_ERRORCOLUMNS) %>% 
+    mutate(ent_lenght = str_length(entity)) %>% 
+    mutate(BAR_ENTITY = ifelse(ent_lenght == 4,
+                               paste0("E",entity),
+                               paste0("E0",entity))) %>% 
+    select(-entity, -ent_lenght) 
+
   
-  
-  # Finding Match in HFM_DMT Maps::: 
-  fdm_source_entity <- fdm_focus %>%
-    filter(entity %in% hfm_entity$HFM_ENTITY) %>% 
-    # select(entity, account, source_account, custom1) %>%
-    select(entity,custom1,source_account) %>%
-    distinct() %>% 
-    left_join(entity_hfm %>% select(HFM_ENTITY, BAR_ENTITY),
-              by = c("entity" = "HFM_ENTITY")) %>% 
-    rename(HFM_C1 = custom1) 
-    # mutate(source_account = paste0("000",source_account))
-  
-  
-  HFM <- hfm_entity %>% filter(HFM_ENTITY %in% fdm_focus$entity) %>% 
-    select(-RUNID,-LOADDATETIME, -JOBNAME,-dimension) 
+  acn_entity_input <- entity_map %>% 
+    select(-AMT) %>% 
+    select(COCODE, BUSAREA, COCTR = COSTCTR, CURRKEY, BAR_ENTITY) %>% 
+    distinct()
 
   
   
   
-  #ACN/DMT input
-  
-  
-  DMT_DETAILED <- HFM %>% left_join(fdm_source_entity %>%
-                          select(-BAR_ENTITY),
-                          by =c("HFM_ENTITY" = "entity")) 
-
-  
-  DMT_INSERT   <- DMT_DETAILED %>%
-    select(
-           HFM_ENTITY,
-           BAR_ENTITY,source_account) %>% 
-    left_join(KICK_ENT %>%
-                select(ACCT, COCODE, BUSAREA, CURRKEY),
-              by = c("source_account" = "ACCT")) %>% 
-    select(-source_account) %>% 
-    distinct() %>% 
-    left_join(HFM %>%
-                select(BAR_PRODUCT,
-                       BAR_CUSTOMER,
-                       HFM_ENTITY), by = "HFM_ENTITY")
-  
-
-  
-  print(paste("DESTINY TABLE: ", "'EPM_C11_BASICENTITY_LKP_NA+"))
+  recom <- paste("DESTINY TABLE: ", "EPM_C11_USDSENTITY_LKP_NA+  ,", "IF TOTAL_TO_KICK = 0, NO ACTION NEEDED")
   
   
   return(list(TO_BE_KICKOUT = KICK_ENT,
               TOTAL_TO_KICK = total_kick_entity,
-              DMT_ACN_INPUT = DMT_INSERT))
+              NOTES = recom,
+              CONFIRM_TOT = entity_map,
+              DMT_ACN_INPUT = acn_entity_input))
   
 }
+
+
+account_KO <- kickout_account()
+entity_KO <- kickout_entity()
 
 
 kick_storage <- function(){ 
