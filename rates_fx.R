@@ -112,14 +112,16 @@ return(list(table = pull_long,
 
 # Sources Unification ::::::::::::::::::::::
 table <- rates_table(fx)
-last  <- rates_table(fx_last)
+# last  <- rates_table(fx_last)
 
 
 # Merged Cleaned Data (FX RATES) :::::::::::
 # Equivalent to the daily_rates sheet on SBD_Rates.xlsx
 
-pull_long <- table$table %>%
-  bind_rows(last$table)
+# pull_long <- table$table %>%
+#   bind_rows(last$table)
+
+pull_long<-table
 
 
 return(pull_long)
@@ -137,7 +139,7 @@ pull_long      <- SBD_FX()
 SBD_Rates_original <- function(){ 
   
 # Wider Pivot ::::::::::::::::::::::::::::::
-wider_pull <- pull_long %>% select(from_ccy, date, inverse_spot_rate) %>% 
+wider_pull <- pull_long$table %>% select(from_ccy, date, inverse_spot_rate) %>% 
   pivot_wider(names_from = date, values_from = inverse_spot_rate)
   
 
