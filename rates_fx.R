@@ -157,10 +157,12 @@ wider_pull <- pull_long$table %>% select(from_ccy, date, inverse_spot_rate) %>%
 #          currency = X3)
 
 
-wider_pull <- struct %>% left_join(wider_pull, by = "from_ccy")
+#wider_pull <- struct %>% left_join(wider_pull, by = "from_ccy")
 
 
 # Save Wider Pivot - - - - - - - - - - - - - -
+
+setwd(model)
 
 wider_pull %>% openxlsx::write.xlsx("SBD_Rates_original.xlsx", overwrite = T)
 

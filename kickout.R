@@ -24,8 +24,11 @@ file <- list.files() %>% as_tibble %>%
   filter(grepl("NA",value)) %>% 
   filter(grepl("C11",value)) %>% 
   mutate(date = substr(value,27,34)) %>% 
+  mutate(code = substr(value,36,41)) %>% 
   mutate(date = as.numeric(date)) %>% 
+  mutate(code = as.numeric(code)) %>% 
   filter(date == max(date)) %>% 
+  filter(code == max(code)) %>% 
   pull(value)
 
 # Add recursive filter to make this sensitive/Recursive to book? 
@@ -159,8 +162,11 @@ kickout_entity <- function(){
     filter(grepl("NA",value)) %>% 
     filter(grepl("C11",value)) %>% 
     mutate(date = substr(value,27,34)) %>% 
+    mutate(code = substr(value,36,41)) %>% 
     mutate(date = as.numeric(date)) %>% 
+    mutate(code = as.numeric(code)) %>% 
     filter(date == max(date)) %>% 
+    filter(code == max(code)) %>% 
     pull(value)
   
   # Add recursive filter to make this sensitive/Recursive to book? 
