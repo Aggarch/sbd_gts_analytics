@@ -139,6 +139,7 @@ reg_tot <- openxlsx::read.xlsx("../REG_TOT.xlsx") %>% as_tibble()
 
 
 
+origin %>% 
 
 
 

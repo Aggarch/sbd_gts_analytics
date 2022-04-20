@@ -112,7 +112,7 @@ return(list(table = pull_long,
 
 # Sources Unification ::::::::::::::::::::::
 table <- rates_table(fx)
-# last  <- rates_table(fx_last)
+#last  <- rates_table(fx_last)
 
 
 # Merged Cleaned Data (FX RATES) :::::::::::
