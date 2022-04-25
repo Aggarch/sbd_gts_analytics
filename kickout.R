@@ -286,3 +286,30 @@ print(last_kick_entity)
 # Open DMT 
 # Citrix Script to run given a specific target. 
 
+# Cost_to_fucntion
+
+getwd()
+setwd("C:/Users/AEG1130/Documents/mapping")
+
+# MK provided file:::
+
+cc_function <- openxlsx::read.xlsx("cc_function.xlsx") %>%
+  as_tibble() %>% 
+  janitor::clean_names() %>%
+  select(-x7) %>% 
+  filter(!is.na(bar_function))
+  
+
+collapsed<- cc_function %>% 
+  select(source_cost_cntr, bar_function) %>% 
+  distinct() %>% 
+  group_by(source_cost_cntr) %>% 
+  summarise(bar_function = str_flatten(bar_function,collapse = ","))
+  
+# DMT MAP COCTR Function
+
+dmt_function_cc <- openxlsx::read.xlsx("dmt_function_cc.xlsx") %>%
+  as_tibble() %>% 
+  janitor::clean_names()
+
+
