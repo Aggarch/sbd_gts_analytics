@@ -313,3 +313,32 @@ dmt_function_cc <- openxlsx::read.xlsx("dmt_function_cc.xlsx") %>%
   janitor::clean_names()
 
 
+
+f4<- "C:/Users/AEG1130/Documents/Forecast_04/F04_BL"
+
+setwd(f4)
+
+hoy <- today() %>% 
+  as_tibble() %>% 
+  mutate(value = str_replace_all(value,"-","_"))
+
+time<- now() %>% 
+  as_tibble() %>%
+  mutate(value = as.character(value)) %>% 
+  separate(value, c("day","time"), sep = " ") %>% 
+  separate(time, c("hour","mins","secs"),sep = ":") %>%
+  select(-day,-secs) %>% 
+  unite("time", hour:mins) 
+
+
+files <- list.files() %>% as_tibble() %>% 
+  mutate(value = str_replace_all(value,".xlsx","")) %>% 
+  mutate(append = paste("_BL_",hoy,"@",time,".xlsx")) %>% 
+  mutate(append = str_replace_all(append," ","")) %>% 
+  mutate(append = str_trim(append)) %>% 
+  mutate(fname = paste0(value,append)) %>% 
+  select(-append)
+
+file.rename(list.files(pattern = "GTS"), str_replace(list.files(pattern = ".xlsx"),pattern = "foo", "bob"))
+
+
