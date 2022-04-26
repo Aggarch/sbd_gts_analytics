@@ -283,6 +283,10 @@ print(last_kick_entity)
   
 }  
 
+
+# Mapping CC to Function --------------------------------------------------
+
+
 # Open DMT 
 # Citrix Script to run given a specific target. 
 
@@ -314,6 +318,12 @@ dmt_function_cc <- openxlsx::read.xlsx("dmt_function_cc.xlsx") %>%
 
 
 
+
+# Roll files over ---------------------------------------------------------
+
+library(tidyverse)
+library(lubridate)
+
 f4<- "C:/Users/AEG1130/Documents/Forecast_04/F04_BL"
 
 setwd(f4)
@@ -328,7 +338,7 @@ time<- now() %>%
   separate(value, c("day","time"), sep = " ") %>% 
   separate(time, c("hour","mins","secs"),sep = ":") %>%
   select(-day,-secs) %>% 
-  unite("time", hour:mins) 
+  unite("time", hour:mins)
 
 
 files <- list.files() %>% as_tibble() %>% 
@@ -339,6 +349,26 @@ files <- list.files() %>% as_tibble() %>%
   mutate(fname = paste0(value,append)) %>% 
   select(-append)
 
-file.rename(list.files(pattern = "GTS"), str_replace(list.files(pattern = ".xlsx"),pattern = "foo", "bob"))
+
+getwd()
+old_files <- list.files()
+
+
+new_files <- files %>% pull(fname)
+
+file.copy(from = old_files, to = new_files)
+# Clear out the old files
+file.remove(old_files)
+
+# BL Elements Created refreshes on Live Versions
+# At this point should be just about Breaking Links. 
+
+rnf<- old_files %>% as_tibble() %>% mutate(fname = str_replace_all(value,"11_14","11AM"))
+
+new_files <- rnf %>% pull(fname)
+
+file.copy(from = old_files, to = new_files)
+file.remove(old_files)
+
 
 
