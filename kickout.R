@@ -302,7 +302,6 @@ cc_function <- openxlsx::read.xlsx("cc_function.xlsx") %>%
   janitor::clean_names() %>%
   select(-x7) %>% 
   filter(!is.na(bar_function))
-  
 
 collapsed<- cc_function %>% 
   select(source_cost_cntr, bar_function) %>% 
@@ -317,6 +316,47 @@ dmt_function_cc <- openxlsx::read.xlsx("dmt_function_cc.xlsx") %>%
   janitor::clean_names()
 
 
+
+dmt_function_cc2 <- openxlsx::read.xlsx("prod2_table.xlsx") %>%
+  as_tibble() %>% 
+  janitor::clean_names()
+
+
+dmt_function_cc %>% filter(coctr == "1605641461")
+dmt_function_cc %>% filter(coctr == "9401500172")
+dmt_function_cc %>% filter(coctr == "6013040164")
+
+dmt_function_cc %>% filter(coctr == "9401500170")
+
+
+# CC To Function Current Mapping Table. 
+current <- dmt_function_cc %>% filter(coctr %in% collapsed$source_cost_cntr)
+
+current2 <- dmt_function_cc2 %>% filter(coctr %in% collapsed$source_cost_cntr)
+
+
+# Mike Kemp Reported Not in Construction table. 
+reported <- collapsed %>% filter(!source_cost_cntr %in% dmt_function_cc$coctr)
+
+
+# Mike Reported Structure: 
+summary_c <- collapsed %>%
+  mutate(count = str_count(bar_function,",")) %>% 
+  mutate(bar_function_counting = count+1) %>% 
+  select(-count)
+
+# Current State of BAR CC to Function: 
+summary_r <- current %>%
+  group_by(coctr) %>% 
+  summarise(bar_function = str_flatten(bar_function, collapse=",")) %>% 
+  mutate(count = str_count(bar_function,",")) %>% 
+  mutate(bar_function_counting = count+1) %>% 
+  select(-count)
+
+
+# Reported Not in Current State 
+
+diff<- summary_c %>% filter(!source_cost_cntr %in% summary_r$coctr)
 
 
 # Roll files over ---------------------------------------------------------
