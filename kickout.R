@@ -359,6 +359,26 @@ summary_r <- current %>%
 diff<- summary_c %>% filter(!source_cost_cntr %in% summary_r$coctr)
 
 
+# Verify Patel Entity and Function ----------------------------------------
+
+
+dmt_function_cc <- openxlsx::read.xlsx("dmt_function_cc.xlsx") %>%
+  as_tibble() %>% 
+  janitor::clean_names()
+
+
+dmt_ent_usd <- openxlsx::read.xlsx("ent_table_usd.xlsx") %>%
+  as_tibble() %>% 
+  janitor::clean_names()
+
+
+patelg<- openxlsx::read.xlsx("patel_guide.xlsx") %>% 
+  as_tibble() %>% 
+  janitor::clean_names() %>% 
+  mutate(lcc = as.character(lcc))
+
+
+
 # Roll files over ---------------------------------------------------------
 
 library(tidyverse)
