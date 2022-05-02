@@ -1,6 +1,7 @@
 # Ad hoc
 
 library(tidyverse)
+library(lubridate)
 
 nominal <- function(nom){
   
@@ -14,45 +15,47 @@ nominal <- function(nom){
 }
 
 money <- "C:/Users/AEG1130/Documents/payrroll"
-
-
 setwd(money)
 
-marketd <- openxlsx::read.xlsx("history.xlsx") %>% 
+
+# Statement ---------------------------------------------------------------
+
+cT_statement <- openxlsx::read.xlsx("cT_statement.xlsx") %>% 
   as_tibble() %>% 
-  janitor::clean_names()
-
-marketd %>%
-  group_by(opening_direction, symbol) %>%
-  filter(opening_direction == "Buy")  %>%
-  summarise(net = sum(net_usd),
-            .groups = "drop") %>%
-  arrange(desc(net)) 
-
-
-# ANALIZE -----------------------------------------------------------------
-
-marketd %>%
-  group_by(opening_direction, symbol) %>%
-  summarise(net = sum(net_usd),
-            .groups = "drop") %>%
-  pivot_wider(names_from = opening_direction, values_from = net) %>% 
-  mutate_if(~ any(is.na(.)),~ if_else(is.na(.),0,.)) %>% 
-  mutate(net = Buy + Sell) %>% 
-  arrange(desc(net))
-  
-  
-
-# Checking ----------------------------------------------------------------
-
-check <- openxlsx::read.xlsx("checking.xlsx") %>% as_tibble() %>% 
-  mutate(FECHA = as.Date(FECHA, origin = "1899-12-30")) %>% 
   janitor::clean_names() %>% 
-  mutate(period = lubridate::month(fecha)) %>% 
-  mutate(year = lubridate::year(fecha))
-
-
-check %>% group_by(period, year, descripcion) %>% 
-  summarise(valor = sum(valor),.groups = "drop") %>% 
-  arrange(desc(valor))
+  mutate(date_close = as.Date(closing_time_utc_5, origin = "1899-12-31")) %>% 
+  mutate(year = year(date_close)) %>% 
+  mutate(period = month(date_close)) %>% 
+  mutate(day = day(date_close)) %>% 
+  select(-closing_time_utc_5)
   
+
+
+perf_symbol<- function(){ 
+  
+  symbol_perf<-cT_statement %>% 
+    group_by(year, symbol) %>% 
+    summarise(net_usd = sum(net_usd), .groups = "drop") %>% 
+    pivot_wider(names_from = year, values_from = net_usd) %>% 
+    replace(is.na(.), 0) %>% 
+    mutate(overview = rowSums(across(where(is.numeric)))) %>% 
+    arrange(overview)
+  
+  
+  return(symbol_perf)
+    
+  }
+
+  
+  
+
+# Transacts ----------------------------------------------------------------
+
+cT_transact <- openxlsx::read.xlsx("cT_transact.xlsx") %>% 
+  as_tibble() %>% 
+  janitor::clean_names() %>% 
+
+    mutate(year = year(date_close)) %>% 
+  mutate(period = month(date_close)) %>% 
+  mutate(day = day(date_close)) %>% 
+  select(-closing_time_utc_5)
