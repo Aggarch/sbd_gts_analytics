@@ -221,7 +221,8 @@ kickout_entity <- function(){
     filter(source_account %in% KICK_ENT$ACCT) %>% 
     filter(account %in% KICK_ENT$BAR_ACT) %>% 
     mutate(busarea = str_detect(source_icp, busarea$value)) %>%
-    filter(busarea == T)
+    filter(busarea == T) %>% 
+    distinct()
     
   
   fdm_entity <- fdm_focus %>% select(source_account, entity)
@@ -229,6 +230,7 @@ kickout_entity <- function(){
   
   entity_map <- KICK_ENT %>% 
     left_join(fdm_entity, by = c("ACCT" = "source_account")) %>% 
+    distinct() %>% 
     select(-BAR_FUNCTION, -DI_ERRORCOLUMNS) %>% 
     mutate(ent_lenght = str_length(entity)) %>% 
     mutate(BAR_ENTITY = ifelse(ent_lenght == 4,
@@ -238,12 +240,11 @@ kickout_entity <- function(){
 
   
   acn_entity_input <- entity_map %>% 
-    select(-AMT) %>% 
+    select(-AMT,-BAR_ACT) %>% 
     select(COCODE, BUSAREA, COCTR = COSTCTR, CURRKEY, BAR_ENTITY) %>% 
-    distinct()
+    distinct()%>%
+    filter(!is.na(BAR_ENTITY))
 
-  
-  
   
   recom <- paste("DESTINY TABLE: ", "EPM_C11_USDSENTITY_LKP_NA+  ,", "IF TOTAL_TO_KICK = 0, NO ACTION NEEDED")
   
