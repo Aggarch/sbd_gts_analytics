@@ -181,6 +181,7 @@ kickout_entity <- function(){
   KICK_ENT <- target %>%
     select(BAR_FUNCTION, DI_ERRORCOLUMNS,
            BAR_ENTITY, ACCT,AMT, BAR_ACCT,
+           BAR_PRODUCT, BAR_CUSTNO,
            COCODE, BUSAREA, CURRKEY,COSTCTR) %>%
     mutate(ACCT = as.character(ACCT),
            AMT  = as.numeric(AMT)) %>% 
@@ -241,7 +242,8 @@ kickout_entity <- function(){
   
   acn_entity_input <- entity_map %>% 
     select(-AMT,-BAR_ACT) %>% 
-    select(COCODE, BUSAREA, COCTR = COSTCTR, CURRKEY, BAR_ENTITY) %>% 
+    select(COCODE, BUSAREA, COCTR = COSTCTR,
+           CURRKEY, BAR_ENTITY,BAR_PRODUCT, BAR_CUSTNO) %>% 
     distinct()%>%
     filter(!is.na(BAR_ENTITY))
 
@@ -257,9 +259,118 @@ kickout_entity <- function(){
   
 }
 
+kickout_basic_entity <- function(){ 
+  
+  
+  setwd(kout_fc11)
+  
+  file <- list.files() %>% as_tibble %>% 
+    filter(grepl("NA",value)) %>% 
+    filter(grepl("C11",value)) %>% 
+    mutate(date = substr(value,27,34)) %>% 
+    mutate(code = substr(value,36,41)) %>% 
+    mutate(date = as.numeric(date)) %>% 
+    mutate(code = as.numeric(code)) %>% 
+    filter(date == max(date)) %>% 
+    filter(code == max(code)) %>% 
+    pull(value)
+  
+  # Add recursive filter to make this sensitive/Recursive to book? 
+  # PCA = P&L /// FISL = BSheet 
+  
+  target <- read.csv(file) %>% as_tibble
+  
+  
+  setwd(mapping_fold)
+  
+  
+  KICK_ENT <- target %>%
+    select(BAR_FUNCTION, DI_ERRORCOLUMNS,
+           BAR_ENTITY, ACCT,AMT, BAR_ACCT,
+           BAR_PRODUCT, BAR_CUSTNO,
+           COCODE, BUSAREA, CURRKEY,COSTCTR) %>%
+    mutate(ACCT = as.character(ACCT),
+           AMT  = as.numeric(AMT)) %>% 
+    mutate(BAR_ACT = str_replace_all(BAR_ACCT, "A","")) %>% 
+    filter(grepl("ENTITY",DI_ERRORCOLUMNS)) %>% 
+    mutate(ACCT = paste0("000",ACCT))
+  
+  total_kick_entity <- sum(KICK_ENT$AMT)
+  
+  
+  # Connect to the FDM File find ACCT in Src Acct to pick HFM Acct
+  # Open HFM DMT Files and search for the HFM account. 
+  
+  
+  ############ FDM File 
+  
+  
+  # Make sure the FDM Files are readable;  
+  
+  
+  setwd(mapping_fold)
+  
+  fdm_dos <- openxlsx::read.xlsx("WWPT_SAP_NA_US_2_Actual.xlsx") %>%
+    as_tibble() %>% mutate(version = "fdm_dos")
+  
+  fdm_one <- openxlsx::read.xlsx("WWPT_SAP_NA_US_Actual.xlsx") %>% 
+    as_tibble() %>% mutate(version = "fdm_one")
+  
+  
+  fdm <- fdm_one %>% bind_rows(fdm_dos) %>% janitor::clean_names()
+  
+  # Entities of Interest: 
+  
+  busarea <- KICK_ENT$BUSAREA %>% as_tibble() %>% distinct()
+  
+  fdm_focus <- fdm %>%
+    mutate(source_account = paste0("000",source_account)) %>% 
+    filter(source_account %in% KICK_ENT$ACCT) %>% 
+    filter(account %in% KICK_ENT$BAR_ACT) %>% 
+    mutate(busarea = str_detect(source_icp, busarea$value)) %>%
+    filter(busarea == T) %>% 
+    distinct()
+  
+  
+  fdm_entity <- fdm_focus %>% select(source_account, entity)
+  
+  
+  entity_map <- KICK_ENT %>% 
+    left_join(fdm_entity, by = c("ACCT" = "source_account")) %>% 
+    distinct() %>% 
+    select(-BAR_FUNCTION, -DI_ERRORCOLUMNS) %>% 
+    mutate(ent_lenght = str_length(entity)) %>% 
+    mutate(BAR_ENTITY = ifelse(ent_lenght == 4,
+                               paste0("E",entity),
+                               paste0("E0",entity))) %>% 
+    select(-entity, -ent_lenght) 
+  
+  
+  acn_entity_input <- entity_map %>% 
+    select(-AMT,-BAR_ACT) %>% 
+    select(COCODE, BUSAREA, CURRKEY,
+           BAR_ENTITY) %>% 
+    distinct()%>%
+    filter(!is.na(BAR_ENTITY))
+  
+  
+  recom <- paste("DESTINY TABLE: ", "EPM_C11_USDSENTITY_LKP_NA+  ,", "IF TOTAL_TO_KICK = 0, NO ACTION NEEDED")
+  
+  
+  return(list(TO_BE_KICKOUT = KICK_ENT,
+              TOTAL_TO_KICK = total_kick_entity,
+              NOTES = recom,
+              CONFIRM_TOT = entity_map,
+              DMT_ACN_INPUT = acn_entity_input))
+  
+}
+
+
+# Pull Result to be map: 
 
 account_KO <- kickout_account()
 entity_KO <- kickout_entity()
+basic_entity_KO <- kickout_basic_entity()
 
 
 kick_storage <- function(){ 
