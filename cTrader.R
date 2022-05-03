@@ -33,7 +33,7 @@ cT_statement <- openxlsx::read.xlsx("cT_statement.xlsx") %>%
 
 perf_symbol<- function(){ 
   
-  symbol_perf<-cT_statement %>% 
+  symbol_perf <- cT_statement %>% 
     group_by(year, symbol) %>% 
     summarise(net_usd = sum(net_usd), .groups = "drop") %>% 
     pivot_wider(names_from = year, values_from = net_usd) %>% 
@@ -48,7 +48,6 @@ perf_symbol<- function(){
 
   
   
-
 # Transacts ----------------------------------------------------------------
 
 cT_transact <- openxlsx::read.xlsx("cT_transact.xlsx") %>% 
