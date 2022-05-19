@@ -373,6 +373,10 @@ entity_KO <- kickout_entity()
 basic_entity_KO <- kickout_basic_entity()
 
 
+
+
+# Storage Kickouts history: 
+
 kick_storage <- function(){ 
 
 setwd(KO)  

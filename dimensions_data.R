@@ -5,6 +5,7 @@ library(tidyverse)
 
 dimensions <- "C:/Users/AEG1130/Documents/DDIMENS" 
 dimens <- "C:/Users/AEG1130/Documents/dimension" 
+reconc <- "C:/Users/AEG1130/Documents/Reconcilation" 
 
 setwd(dimensions)
 
@@ -139,3 +140,51 @@ reg_tot <- openxlsx::read.xlsx("../REG_TOT.xlsx") %>% as_tibble()
 
 
 
+
+
+# HFM Dimensions  ---------------------------------------------------------
+
+
+setwd(reconc)
+
+  
+  resources <- list.files() %>%
+  as_tibble() %>% 
+  mutate(key = str_replace_all(value, ".xlsx","")) %>% 
+  mutate(key = str_replace_all(key, "_Dimenisons","")) %>% 
+  filter(grepl("Dimensions",value)) %>% 
+  mutate(sheet = map(.$value, excel_sheets)) %>% 
+  unnest(cols = c(sheet))
+  
+  
+  dimens <- function(value, key, sheet){ 
+    
+    data <- openxlsx::read.xlsx(value,sheet) %>% 
+      as_tibble() %>% 
+      mutate(dimension = key) %>%
+      mutate(sub.dimension = sheet) %>%
+      janitor::clean_names() %>% 
+      janitor::remove_empty(., which = "cols") %>% 
+      unite("structure",x2: everything(),
+             na.rm = TRUE, remove = FALSE, sep = "-")
+      # mutate(structure = str_replace_all(structure,"-Parent","")) %>% 
+      # mutate(structure = str_replace_all(structure,"-Base",""))%>%
+      # mutate(structure = str_replace_all(structure,"-TRUE","")) %>% 
+      # mutate(structure = str_replace_all(structure,"-FALSE","")) %>% 
+      # relocate(dimension, sub_dimension,
+      #          description, structure, everything())
+      # 
+      # 
+    
+    return(data)
+    
+  }
+  
+  tables <- resources %>% pmap(dimens) %>% 
+    map_dfr(.,bind_rows) %>% 
+    select(!contains("x")) %>% 
+    select(-dimension) %>% 
+    rename(dimension = sub_dimension)
+  
+  
+  
