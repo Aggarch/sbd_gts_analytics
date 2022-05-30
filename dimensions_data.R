@@ -31,11 +31,11 @@ data <- openxlsx::read.xlsx(value,sheet) %>%
    janitor::remove_empty(., which = "cols") %>% 
   unite("structure", x1:everything(),
         na.rm = TRUE, remove = FALSE, sep = "-") %>%
-  mutate(structure = str_replace_all(structure,"-Parent","")) %>% 
-  mutate(structure = str_replace_all(structure,"-Base",""))%>%
-  mutate(structure = str_replace_all(structure,"-TRUE","")) %>% 
-  mutate(structure = str_replace_all(structure,"-FALSE","")) %>% 
-  select(!contains("x")) %>% 
+  # mutate(structure = str_replace_all(structure,"-Parent","")) %>% 
+  # mutate(structure = str_replace_all(structure,"-Base",""))%>%
+  # mutate(structure = str_replace_all(structure,"-TRUE","")) %>% 
+  # mutate(structure = str_replace_all(structure,"-FALSE","")) %>% 
+  # select(!contains("x")) %>% 
   relocate(dimension, sub_dimension, name,
            description, structure, everything())
 
@@ -47,7 +47,7 @@ return(data)
 
 tables <- resources %>% pmap(dimens) %>% 
           map_dfr(.,bind_rows) %>% 
-  select(-pln_member_type, -currency, -base)
+  select(-pln_member_type, -base)
 
 
 setwd(dimens)
@@ -188,3 +188,92 @@ setwd(reconc)
   
   
   
+
+# FX Entities.  -----------------------------------------------------------
+
+# Entities for REG TOT, filtered by Base, and x2 == woACQ section.   
+  woacq <- tables %>% 
+    filter(dimension == "Entity") %>% 
+    filter(sub_dimension == "EN-GTS_REG_TOT") %>% 
+    filter(member_type == "Base") %>% 
+    filter(grepl("GTS_woACQ",x2))
+  
+
+# Total Base entities Without Acquisitions is equivalent to 884 
+# Reported Entities on the Entity list of FX Report == 549  
+  
+  without_ACQ <- count(woacq)
+  entity_list <- count(current.fx)
+  
+  without_ACQ - entity_list
+  
+  
+# P&L Accounts can be Tie Out with other reports whe using Total of 
+# Entities available.   
+  
+  
+  
+
+# Digging into North America ----------------------------------------------
+
+  
+# Tools Entities not OPG , NA 
+  na  <- woacq %>% filter(grepl("_NA_", x3)) %>% filter(!grepl("OPG",description))
+  
+# Entity List contruct on the FX Report  
+  
+# GTS Total Tools + OPG included NA  
+  gts_NA <- woacq %>% filter(grepl("_NA_", x3)) 
+  
+# OPG only 
+  opg_NA <- gts %>% anti_join(na, by = "name")
+  
+# Counting test: count(na) + count(opg) == count(gts)
+
+# Questions: 
+
+  #  Why do ANY of the P&L accounts for the FX do match with BAR TRACKER?
+  #  Why can queries easily be match with P&L BAR TRACKER but just FX report 
+  #  Do not ties out? / If Volume is not reliable what about rates?  
+  
+  
+  
+# EMEA
+  emea  <- woacq %>% filter(grepl("_EMEA", x4)) %>% filter(!grepl("OPG",description))
+  
+# GTS Total Tools + OPG included EMEA  
+  gts_EMEA <- woacq %>% filter(grepl("_EMEA", x4)) 
+  
+# OPG only EMEA
+  opg_EMEA <- gts_EMEA %>% anti_join(emea, by = "name")
+  
+# EMEA Ties out with BAR TRACKER Under same logic. 
+  
+
+# Summarise Current FX April PNL Volumes. 
+  
+  current.fx <- openxlsx::read.xlsx('current.fx.xlsx')
+  
+  
+  cfx <- current.fx %>% as_tibble %>% 
+    janitor::clean_names() %>% 
+    filter(entity != "[none]") %>% 
+    mutate(region = str_trim(region)) %>% 
+    group_by(region) %>% 
+    summarise(sales_lc = sum(sales_lc))
+  
+  
+  sum.cfx <- cfx %>%
+    filter(!grepl("OPG", region)) %>% 
+    janitor::adorn_totals()
+  
+  tot_sales_fx <- sum.cfx %>% filter(region == "Total") %>% pull(sales_lc)
+  tot_sales_reported <- 54523.74
+  
+  diff_sales <- tot_sales_reported - tot_sales_fx
+  
+# FX Report be Tie Out, Tie Out all entities for GTS, 
+# NA, EMEA general ::: GTS_Core_woOUT, Label entities
+# With region and description. 
+
+  # Do GTS_NA + Sum(GTS_NA_OP) = GTS_NA_LEG ? 
