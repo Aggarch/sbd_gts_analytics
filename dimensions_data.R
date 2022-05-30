@@ -3,7 +3,7 @@
 library(readxl)
 library(tidyverse)
 
-dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.APR" 
+dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.MAY" 
 dimens <- "C:/Users/AEG1130/Documents/dimension" 
 reconc <- "C:/Users/AEG1130/Documents/Reconcilation" 
 
@@ -29,11 +29,9 @@ data <- openxlsx::read.xlsx(value,sheet) %>%
   mutate(dimension = key) %>%
   mutate(sub.dimension = sheet) %>%
   janitor::clean_names() %>% 
-  # janitor::remove_empty(., which = "cols") %>% 
+   janitor::remove_empty(., which = "cols") %>% 
   unite("structure", x1:everything(),
-        na.rm = TRUE, remove = FALSE, sep = "-") %>%
-  janitor::remove_empty(., which = "cols") %>% 
-  
+        na.rm = T, remove = F, sep = "-") %>%
   # mutate(structure = str_replace_all(structure,"-Parent","")) %>% 
   # mutate(structure = str_replace_all(structure,"-Base",""))%>%
   # mutate(structure = str_replace_all(structure,"-TRUE","")) %>% 
@@ -200,9 +198,11 @@ setwd(reconc)
     filter(dimension == "Entity") %>% 
     filter(sub_dimension == "EN-GTS_REG_TOT") %>% 
     filter(member_type == "Base") %>% 
-    filter(grepl("GTS_woACQ",x2))
+    filter(grepl("GTS_woACQ",x3))
   
   # For May filterable column will be x3, April ~ x2
+  # how Possibly can be filterable column predictable? 
+  # Data Structure should be consistent across. 
   
 
 # Total Base entities Without Acquisitions is equivalent to 884 
