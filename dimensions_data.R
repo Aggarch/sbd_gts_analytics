@@ -3,9 +3,12 @@
 library(readxl)
 library(tidyverse)
 
-dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.MAY" 
-dimens <- "C:/Users/AEG1130/Documents/dimension" 
+dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.APR" 
 reconc <- "C:/Users/AEG1130/Documents/Reconcilation" 
+dimens <- "C:/Users/AEG1130/Documents/dimension" 
+fx     <- "C:/Users/AEG1130/Documents/fx" 
+
+
 
 setwd(dimensions)
 # Dimensions Do Change MoM. 
@@ -198,7 +201,7 @@ setwd(reconc)
     filter(dimension == "Entity") %>% 
     filter(sub_dimension == "EN-GTS_REG_TOT") %>% 
     filter(member_type == "Base") %>% 
-    filter(grepl("GTS_woACQ",x3))
+    filter(grepl("GTS_woACQ",x2))
   
   # For May filterable column will be x3, April ~ x2
   # how Possibly can be filterable column predictable? 
@@ -207,6 +210,10 @@ setwd(reconc)
 
 # Total Base entities Without Acquisitions is equivalent to 884 
 # Reported Entities on the Entity list of FX Report == 549  
+  
+  setwd(reconc)
+  
+  current.fx <- openxlsx::read.xlsx('current.fx.xlsx')
   
   without_ACQ <- count(woacq)
   entity_list <- count(current.fx)
@@ -218,13 +225,14 @@ setwd(reconc)
 # Entities available.   
   
   
-  
 
 # Digging into North America ----------------------------------------------
 
   
 # Tools Entities not OPG , NA 
-  tools_NA  <- woacq %>% filter(grepl("_NA_", x3)) %>% filter(!grepl("OPG",description))
+  tools_NA  <- woacq %>% 
+    filter(grepl("_NA_", x3)) %>%
+    filter(!grepl("OPG",description))
   
 # Entity List contruct on the FX Report  
   
@@ -238,10 +246,15 @@ setwd(reconc)
 
 # Questions: 
 
-  #  Why do ANY of the P&L accounts for the FX do match with BAR TRACKER?
+  #  Why do ANY of the P&L accounts for the PNL FX do match with BAR TRACKER?
   #  Why can queries easily be match with P&L BAR TRACKER but just FX report 
   #  Do not ties out? / If Volume is not reliable what about rates?  
+  #  Where is the Entity List construct on the FX Report coming from? 
   
+  
+  #  All regions instead of NA available on column x4, NA ~ x3,
+  #  Columns facilitate the data classification for a Dynamic Queries. 
+  #  Dimensions Data hosted on SharePoint, How to make it more accessible? 
   
   
 # EMEA
@@ -258,16 +271,13 @@ setwd(reconc)
 
 # Summarise Current FX April PNL Volumes. 
   
-  current.fx <- openxlsx::read.xlsx('current.fx.xlsx')
-  
-  
+
   cfx <- current.fx %>% as_tibble %>% 
     janitor::clean_names() %>% 
     filter(entity != "[none]") %>% 
     mutate(region = str_trim(region)) %>% 
     group_by(region) %>% 
     summarise(sales_lc = sum(sales_lc))
-  
   
   
 # All in LC (Local Currency)  
