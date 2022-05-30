@@ -112,14 +112,15 @@ return(list(table = pull_long,
 
 # Sources Unification ::::::::::::::::::::::
 table <- rates_table(fx)
-last  <- rates_table(fx_last)
+last  <- rates_table(fx_last) 
 
 
 # Merged Cleaned Data (FX RATES) :::::::::::
 # Equivalent to the daily_rates sheet on SBD_Rates.xlsx
 
  pull_long <- table$table %>%
-   bind_rows(last$table)
+   bind_rows(last$table) %>% 
+   distinct()
 
 #pull_long<-table
 
@@ -142,9 +143,10 @@ SBD_Rates_original <- function(){
 wider_pull <-
   # pull_long$table %>%
   pull_long %>% 
+  filter(date >= today() %m-% days(30)) %>% 
   select(from_ccy, date, inverse_spot_rate) %>% 
   pivot_wider(names_from = date, values_from = inverse_spot_rate)
-  
+
 
 # Verify desire order - - - - -- - -- -- - - -
 # FX Construct 
@@ -240,3 +242,8 @@ return(list(daily_rates   =  daily_data,
 # BAR Scenarios For FX Impact Measurement ---------------------------------
 
 
+getwd()
+
+setwd("C:/Users/AEG1130/Documents")
+
+transact <- openxlsx::read.xlsx("fx_trans.xlsx")

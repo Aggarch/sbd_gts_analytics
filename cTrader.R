@@ -58,3 +58,15 @@ cT_transact <- openxlsx::read.xlsx("cT_transact.xlsx") %>%
   mutate(period = month(date_close)) %>% 
   mutate(day = day(date_close)) %>% 
   select(-closing_time_utc_5)
+
+
+
+ptf <- function(TRM, cT){
+  
+  cl = 13300000-10000800
+  
+  rem = (TRM * cT) - cl
+  
+  return(rem)
+  
+}
