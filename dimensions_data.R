@@ -3,11 +3,12 @@
 library(readxl)
 library(tidyverse)
 
-dimensions <- "C:/Users/AEG1130/Documents/DDIMENS" 
+dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.APR" 
 dimens <- "C:/Users/AEG1130/Documents/dimension" 
 reconc <- "C:/Users/AEG1130/Documents/Reconcilation" 
 
 setwd(dimensions)
+# Dimensions Do Change MoM. 
 
 
  resources <- list.files() %>%
@@ -28,9 +29,11 @@ data <- openxlsx::read.xlsx(value,sheet) %>%
   mutate(dimension = key) %>%
   mutate(sub.dimension = sheet) %>%
   janitor::clean_names() %>% 
-   janitor::remove_empty(., which = "cols") %>% 
+  # janitor::remove_empty(., which = "cols") %>% 
   unite("structure", x1:everything(),
         na.rm = TRUE, remove = FALSE, sep = "-") %>%
+  janitor::remove_empty(., which = "cols") %>% 
+  
   # mutate(structure = str_replace_all(structure,"-Parent","")) %>% 
   # mutate(structure = str_replace_all(structure,"-Base",""))%>%
   # mutate(structure = str_replace_all(structure,"-TRUE","")) %>% 
@@ -189,7 +192,8 @@ setwd(reconc)
   
   
 
-# FX Entities.  -----------------------------------------------------------
+  
+# FX Entities Analysis.  -----------------------------------------------------------
 
 # Entities for REG TOT, filtered by Base, and x2 == woACQ section.   
   woacq <- tables %>% 
@@ -197,6 +201,8 @@ setwd(reconc)
     filter(sub_dimension == "EN-GTS_REG_TOT") %>% 
     filter(member_type == "Base") %>% 
     filter(grepl("GTS_woACQ",x2))
+  
+  # For May filterable column will be x3, April ~ x2
   
 
 # Total Base entities Without Acquisitions is equivalent to 884 
@@ -218,7 +224,7 @@ setwd(reconc)
 
   
 # Tools Entities not OPG , NA 
-  na  <- woacq %>% filter(grepl("_NA_", x3)) %>% filter(!grepl("OPG",description))
+  tools_NA  <- woacq %>% filter(grepl("_NA_", x3)) %>% filter(!grepl("OPG",description))
   
 # Entity List contruct on the FX Report  
   
@@ -226,7 +232,7 @@ setwd(reconc)
   gts_NA <- woacq %>% filter(grepl("_NA_", x3)) 
   
 # OPG only 
-  opg_NA <- gts %>% anti_join(na, by = "name")
+  opg_NA <- gts_NA %>% anti_join(tools_NA, by = "name")
   
 # Counting test: count(na) + count(opg) == count(gts)
 
@@ -239,13 +245,13 @@ setwd(reconc)
   
   
 # EMEA
-  emea  <- woacq %>% filter(grepl("_EMEA", x4)) %>% filter(!grepl("OPG",description))
+  tools_EMEA  <- woacq %>% filter(grepl("_EMEA", x4)) %>% filter(!grepl("OPG",description))
   
 # GTS Total Tools + OPG included EMEA  
   gts_EMEA <- woacq %>% filter(grepl("_EMEA", x4)) 
   
 # OPG only EMEA
-  opg_EMEA <- gts_EMEA %>% anti_join(emea, by = "name")
+  opg_EMEA <- gts_EMEA %>% anti_join(tools_EMEA, by = "name")
   
 # EMEA Ties out with BAR TRACKER Under same logic. 
   
@@ -263,17 +269,28 @@ setwd(reconc)
     summarise(sales_lc = sum(sales_lc))
   
   
-  sum.cfx <- cfx %>%
+  
+# All in LC (Local Currency)  
+  
+  tools_cfx_sales <- cfx %>%
     filter(!grepl("OPG", region)) %>% 
     janitor::adorn_totals()
   
-  tot_sales_fx <- sum.cfx %>% filter(region == "Total") %>% pull(sales_lc)
+  tot_sales_fx <- tools_cfx_sales %>% filter(region == "Total") %>% pull(sales_lc)
   tot_sales_reported <- 54523.74
   
   diff_sales <- tot_sales_reported - tot_sales_fx
+  
+  
   
 # FX Report be Tie Out, Tie Out all entities for GTS, 
 # NA, EMEA general ::: GTS_Core_woOUT, Label entities
 # With region and description. 
 
-  # Do GTS_NA + Sum(GTS_NA_OP) = GTS_NA_LEG ? 
+  # Do GTS_NA + Sum(GTS_NA_OPG) = GTS_NA_REG_TOT !! 
+  # Under this logic, It should be feasible to Tie out
+  # Globally, under GTS_REG_TOT = Tools_Regions + OPG_Regions
+  # Where Data Come from woACQ families. 
+  
+  
+  
