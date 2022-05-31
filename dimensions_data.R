@@ -228,22 +228,53 @@ setwd(reconc)
 
 # Digging into North America ----------------------------------------------
 
-  
-# Tools Entities not OPG , NA 
-  tools_NA  <- woacq %>% 
-    filter(grepl("_NA_", x3)) %>%
-    filter(!grepl("OPG",description))
-  
-# Entity List contruct on the FX Report  
-  
 # GTS Total Tools + OPG included NA  
-  gts_NA <- woacq %>% filter(grepl("_NA_", x3)) 
   
+ entities_NA <- function(){  
+  
+    # GTS Total Tools + OPG included NA  
+    gts_NA <- woacq %>% filter(grepl("_NA_", x3)) %>% 
+    mutate(segment  = "Tools") %>% 
+    mutate(region  = "NA") %>% 
+    rename(sub_region = x4) %>% 
+    select(!contains("x")) %>% 
+    filter(!grepl("DO NOT USE",description)) %>% 
+    
+    mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                               TRUE ~ as.character(description))) %>% 
+      
+    mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+    select(segment, dimension, sub_dimension,
+           region, sub_region, currency, entity = name
+    )
+  
+  
+  
+    # Tools Entities not OPG , NA 
+     tools_NA  <- woacq %>% 
+      filter(grepl("_NA_", x3)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+        select(dimension, sub_dimension,
+               currency, entity = name
+             )
+      
+    
 # OPG only 
   opg_NA <- gts_NA %>% anti_join(tools_NA, by = "name")
+ 
+  print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+  return(gts_NA) 
+  
+  
+ }
   
 # Counting test: count(na) + count(opg) == count(gts)
 
+  
+  
+  
 # Questions: 
 
   #  Why do ANY of the P&L accounts for the PNL FX do match with BAR TRACKER?
