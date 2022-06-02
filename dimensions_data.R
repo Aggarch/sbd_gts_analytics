@@ -586,7 +586,24 @@ return(list(NAm   = NAm,
 Ent_all <- Entities() %>% 
     map_dfr(.,bind_rows)  
   
+
+
+Ent_all <- openxlsx::read.xlsx("Ent_all.xlsx") %>% 
+  as_tibble() %>% 
+  mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+  mutate(region =  case_when(region == "NA"~"North America",
+                             region == "EMEANZ"~"EMEA ANZ",
+                             region == "LAG"~"LAG Tools",
+                             region == "ASIA"~"ASIA Tools",
+                             region == "ASIA_MFG"~"ASIA MFG",
+                             region == "GTS_HQ"~"GTS HQ",
+                             region == "GTS_HEDGE"~"GTS HEDGE"))
+
+setwd(reconc)
+
 Ent_all %>% openxlsx::write.xlsx(.,"Ent_all.xlsx", overwrite = T) 
+
+                             
 
 
 # Compare PSum FX  --------------------------------------------------------
