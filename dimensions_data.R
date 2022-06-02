@@ -637,74 +637,90 @@ fx.pnl.gaps <- function(){
     
   # Global Sales  
   
-  sales_ent <- openxlsx::read.xlsx("global_sales.xlsx") %>% 
+  sales_ent <- openxlsx::read.xlsx("global_sales_ytd.xlsx") %>% 
     janitor::clean_names() %>% 
     as_tibble() %>% 
     mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    select(segment, region, sub_region, lc, entity, value) %>% 
+    select(segment, region, sub_region, lc, entity,month, value) %>% 
     filter(!entity %in% current.fx$entity ) %>% 
     filter(value != 0)
   
   sales <-  sales_ent %>% 
-    group_by(segment,lc) %>% 
-    summarise(v = sum(value),.groups = "drop") %>% 
+    group_by(segment,lc, month) %>% 
+    summarise(v = sum(value),
+              entities = str_flatten(entity, collapse =","),
+              .groups = "drop") %>% 
     filter(lc != "USD") %>%
     mutate(f = v*1000000) %>% 
-    janitor::adorn_totals()
+    janitor::adorn_totals() %>% 
+    relocate(.after = f, entities) %>% 
+    filter(f != 0)
   
   
   
   # Global SGM  
   
-  sgm_ent <- openxlsx::read.xlsx("global_sgm.xlsx") %>% 
+  sgm_ent <- openxlsx::read.xlsx("global_sgm_ytd.xlsx") %>% 
     janitor::clean_names() %>% 
     as_tibble() %>% 
     mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    select(segment, region, sub_region, lc, entity, value)
+    select(segment, region, sub_region, lc, entity,month, value)
   
   sgm <-  sgm_ent %>% 
     filter(!entity %in% current.fx$entity ) %>% 
-    group_by(segment,lc) %>% 
-    summarise(v = sum(value),.groups = "drop") %>% 
+    group_by(segment,lc, month) %>% 
+    summarise(v = sum(value),
+              entities = str_flatten(entity, collapse =","),
+              .groups = "drop") %>% 
     filter(lc != "USD") %>%
     mutate(f = v*1000000) %>% 
-    janitor::adorn_totals()
+    janitor::adorn_totals() %>% 
+    relocate(.after = f,entities) %>% 
+    filter(f != 0)
   
   
   
 # Global SG&A  
   
-  sganda_ent <- openxlsx::read.xlsx("sganda_global.xlsx") %>% 
+  sganda_ent <- openxlsx::read.xlsx("global_sganda_ytd.xlsx") %>% 
     janitor::clean_names() %>% 
     as_tibble() %>% 
     mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    select(segment, region, sub_region, lc, entity, value)
+    select(segment, region, sub_region, lc, entity,month, value)
   
   sga <-   sganda_ent %>%
     filter(!entity %in% current.fx$entity ) %>% 
-    group_by(segment,lc) %>% 
-    summarise(v = sum(value),.groups = "drop") %>% 
+    group_by(segment,lc, month) %>% 
+    summarise(v = sum(value),
+              entities = str_flatten(entity, collapse =","),
+              .groups = "drop") %>% 
     filter(lc != "USD") %>%
     mutate(f = v*1000000) %>% 
-    janitor::adorn_totals()
+    janitor::adorn_totals() %>% 
+    relocate(.after = f, entities) %>% 
+    filter(f !=0)
     
   
   
 # Global OCOS  
   
-  cosoth_ent <- openxlsx::read.xlsx("ocos_global.xlsx") %>% 
+  cosoth_ent <- openxlsx::read.xlsx("global_ocos_ytd.xlsx") %>% 
     janitor::clean_names() %>% 
     as_tibble() %>% 
     mutate(region = ifelse(is.na(region),"NA",region)) %>% 
-    select(segment, region, sub_region, lc, entity, value)
+    select(segment, region, sub_region, lc, entity,month, value)
   
   ocos <- cosoth_ent %>% 
-    filter(!entity %in% current.fx$entity ) %>% 
-    group_by(segment,lc) %>% 
-    summarise(v = sum(value),.groups = "drop") %>% 
+    filter(!entity %in% current.fx$entity) %>% 
+    group_by(segment,lc, month) %>% 
+    summarise(v = sum(value),
+              entities = str_flatten(entity, collapse =","),
+              .groups = "drop") %>% 
     filter(lc != "USD") %>%
     mutate(f = v*1000000) %>% 
-    janitor::adorn_totals()
+    janitor::adorn_totals() %>% 
+    relocate(.after = f, entities) %>% 
+    filter(f != 0)
   
   
   return(list(sales =  sales,
