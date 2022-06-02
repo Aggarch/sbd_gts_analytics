@@ -213,7 +213,8 @@ setwd(reconc)
   
   setwd(reconc)
   
-  current.fx <- openxlsx::read.xlsx('current.fx.xlsx')
+  current.fx <- openxlsx::read.xlsx('current.fx.xlsx') %>% 
+    as_tibble %>% janitor::clean_names()
   
   without_ACQ <- count(woacq)
   entity_list <- count(current.fx)
@@ -230,6 +231,12 @@ setwd(reconc)
 
 # GTS Total Tools + OPG included NA  
   
+  
+Entities <- function(){   
+  
+
+# NORTH AMERICA -----------------------------------------------------------
+
  entities_NA <- function(){  
   
     # GTS Total Tools + OPG included NA  
@@ -262,7 +269,7 @@ setwd(reconc)
       
     
 # OPG only 
-  opg_NA <- gts_NA %>% anti_join(tools_NA, by = "name")
+  opg_NA <- gts_NA %>% anti_join(tools_NA, by = "entity")
  
   print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
   return(gts_NA) 
@@ -288,18 +295,304 @@ setwd(reconc)
   #  Dimensions Data hosted on SharePoint, How to make it more accessible? 
   
   
-# EMEA
-  tools_EMEA  <- woacq %>% filter(grepl("_EMEA", x4)) %>% filter(!grepl("OPG",description))
+
+# EMEA --------------------------------------------------------------------
+
+  entities_EMEA <- function(){  
+    
+    # GTS Total Tools + OPG included NA  
+    gts_EMEA <- woacq %>% filter(grepl("EMEA", x4)) %>% 
+      mutate(segment  = "Tools") %>% 
+      mutate(region  = "EMEANZ") %>% 
+      rename(sub_region = x4) %>% 
+      select(!contains("x")) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      
+      mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                                 TRUE ~ as.character(description))) %>% 
+      
+      mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+      select(segment, dimension, sub_dimension,
+             region, sub_region, currency, entity = name
+      )
+    
+    
+    
+    # Tools Entities not OPG , NA 
+    tools_EMEA  <- woacq %>% 
+      filter(grepl("EMEA", x4)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      select(dimension, sub_dimension,
+             currency, entity = name
+      )
+    
+    
+    # OPG only 
+    opg_EMEA <- gts_EMEA %>% anti_join(tools_EMEA, by = "entity")
+    
+    print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+    return(gts_EMEA) 
+    
+    
+  }
   
-# GTS Total Tools + OPG included EMEA  
-  gts_EMEA <- woacq %>% filter(grepl("_EMEA", x4)) 
   
-# OPG only EMEA
-  opg_EMEA <- gts_EMEA %>% anti_join(tools_EMEA, by = "name")
   
 # EMEA Ties out with BAR TRACKER Under same logic. 
   
+  
+  # LAG --------------------------------------------------------------------
+  
+  entities_LAG <- function(){  
+    
+    # GTS Total Tools + OPG included NA  
+    gts_LAG <- woacq %>% filter(grepl("GTS_LAG_REG_TOT", x5)) %>% 
+      mutate(segment  = "Tools") %>% 
+      mutate(region  = "LAG") %>% 
+      rename(sub_region = x5) %>% 
+      select(!contains("x")) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      
+      mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                                 TRUE ~ as.character(description))) %>% 
+      
+      mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+      select(segment, dimension, sub_dimension,
+             region, sub_region, currency, entity = name
+      )
+    
+    
+    
+    # Tools Entities not OPG , NA 
+    tools_LAG  <- woacq %>% 
+      filter(grepl("LAG", x4)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      select(dimension, sub_dimension,
+             currency, entity = name
+      )
+    
+    
+    # OPG only 
+    opg_LAG <- gts_LAG %>% anti_join(tools_LAG, by = "entity")
+    
+    print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+    return(gts_LAG) 
+    
+    
+  }
+  
+  
+  
 
+# ASIA --------------------------------------------------------------------
+
+  entities_ASIA <- function(){  
+    
+    # GTS Total Tools + OPG included NA  
+    gts_ASIA <- woacq %>% filter(grepl("ASIA_REG", x5)) %>% 
+      mutate(segment  = "Tools") %>% 
+      mutate(region  = "ASIA") %>% 
+      rename(sub_region = x5) %>% 
+      select(!contains("x")) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      
+      mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                                 TRUE ~ as.character(description))) %>% 
+      
+      mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+      select(segment, dimension, sub_dimension,
+             region, sub_region, currency, entity = name
+      )
+    
+    
+    
+    # Tools Entities not OPG , NA 
+    tools_ASIA  <- woacq %>% 
+      filter(grepl("ASIA", x4)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      select(dimension, sub_dimension,
+             currency, entity = name
+      )
+    
+    
+    # OPG only 
+    opg_ASIA <- gts_ASIA %>% anti_join(tools_ASIA, by = "entity")
+    
+    print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+    return(gts_ASIA) 
+    
+    
+  }
+  
+  
+  
+# ASIA MFG ----------------------------------------------------------------
+  
+  entities_ASIA_MFG <- function(){  
+    
+    # GTS Total Tools + OPG included NA  
+    gts_ASIA_MFG <- woacq %>% filter(grepl("ASIA_MFG_REG_TOT", x4)) %>% 
+      mutate(segment  = "Tools") %>% 
+      mutate(region  = "ASIA_MFG") %>% 
+      rename(sub_region = x5) %>% 
+      select(!contains("x")) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      
+      mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                                 TRUE ~ as.character(description))) %>% 
+      
+      mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+      select(segment, dimension, sub_dimension,
+             region, sub_region, currency, entity = name
+      )
+    
+    
+    
+    # Tools Entities not OPG , NA 
+    tools_ASIA_MFG  <- woacq %>% 
+      filter(grepl("ASIA_MFG_REG_TOT", x4)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      select(dimension, sub_dimension,
+             currency, entity = name
+      )
+    
+    
+    # OPG only 
+    opg_ASIA_MFG <- gts_ASIA_MFG %>% anti_join(tools_ASIA_MFG, by = "entity")
+    
+    print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+    return(gts_ASIA_MFG) 
+    
+    
+  }
+  
+  
+  
+# HQ ----------------------------------------------------------------------
+  
+  entities_HQ <- function(){  
+    
+    # GTS Total Tools + OPG included NA  
+    gts_HQ <- woacq %>% filter(grepl("GTS_HQ_WOAdj_REG_TOT", x4)) %>% 
+      mutate(segment  = "Tools") %>% 
+      mutate(region  = "GTS_HQ") %>% 
+      rename(sub_region = x4) %>% 
+      select(!contains("x")) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      
+      mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                                 TRUE ~ as.character(description))) %>% 
+      
+      mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+      select(segment, dimension, sub_dimension,
+             region, sub_region, currency, entity = name
+      )
+    
+    
+    
+    # Tools Entities not OPG , NA 
+    tools_HQ  <- woacq %>% 
+      filter(grepl("GTS_HQ_woAdj_TOT", x4)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      select(dimension, sub_dimension,
+             currency, entity = name
+      )
+    
+    
+    # OPG only 
+    opg_HQ <- gts_HQ %>% anti_join(tools_HQ, by = "entity")
+    
+    print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+    return(gts_HQ) 
+    
+    
+  }
+  
+  
+
+# HEDGE -------------------------------------------------------------------
+
+  
+  entities_HEDGE <- function(){  
+    
+    # GTS Total Tools + OPG included NA  
+    gts_HEDGE <- woacq %>% filter(grepl("GTS_HQ_ADJ_TOT", x4)) %>% 
+      mutate(segment  = "Tools") %>% 
+      mutate(region  = "GTS_HEDGE") %>% 
+      rename(sub_region = x4) %>% 
+      select(!contains("x")) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      
+      mutate(segment = case_when(str_detect(description,"OPG")~"OPG",
+                                 TRUE ~ as.character(description))) %>% 
+      
+      mutate(segment = ifelse(segment == "OPG", "OPG", "Tools")) %>%   
+      
+      select(segment, dimension, sub_dimension,
+             region, sub_region, currency, entity = name
+      )
+    
+    
+    
+    # Tools Entities not OPG , NA 
+    tools_HEDGE  <- woacq %>% 
+      filter(grepl("GTS_HQ_woAdj_TOT", x4)) %>%
+      filter(!grepl("OPG",description)) %>% 
+      filter(!grepl("DO NOT USE",description)) %>% 
+      select(dimension, sub_dimension,
+             currency, entity = name
+      )
+    
+    
+    # OPG only 
+    opg_HEDGE <- gts_HEDGE %>% anti_join(tools_HEDGE, by = "entity")
+    
+    print("Should Tie Out with GTS_NA_REG_TOT & BAR + HFM Trackers")
+    return(gts_HEDGE) 
+    
+    
+  }
+  
+
+  
+  
+NAm   <- entities_NA()
+EMEA  <- entities_EMEA()
+LAG   <- entities_LAG()
+ASIA  <- entities_ASIA()
+ASIAM <- entities_ASIA_MFG()
+HQ    <- entities_HQ()
+HEDGE <- entities_HEDGE()
+
+return(list(NAm   = NAm,
+            EMEA  = EMEA,
+            LAG   = LAG,
+            ASIA  = ASIA,
+            ASIAM = ASIAM,
+            HQ    = HQ,
+            HEDGE = HEDGE))
+}
+  
+Ent_all <- Entities() %>% 
+    map_dfr(.,bind_rows)  
+  
+Ent_all %>% openxlsx::write.xlsx(.,"Ent_all.xlsx", overwrite = T) 
+
+
+# Compare PSum FX  --------------------------------------------------------
+
+  
+      
 # Summarise Current FX April PNL Volumes. 
   
 
@@ -333,5 +626,91 @@ setwd(reconc)
   # Globally, under GTS_REG_TOT = Tools_Regions + OPG_Regions
   # Where Data Come from woACQ families. 
   
+  
+
+# Global PNL -----------------------------------------------------------
+
+  # Volumes distribution by account and LC with reported currency 
+  # Just entities not on current.fx
+
+fx.pnl.gaps <- function(){   
+    
+  # Global Sales  
+  
+  sales_ent <- openxlsx::read.xlsx("global_sales.xlsx") %>% 
+    janitor::clean_names() %>% 
+    as_tibble() %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    select(segment, region, sub_region, lc, entity, value) %>% 
+    filter(!entity %in% current.fx$entity ) %>% 
+    filter(value != 0)
+  
+  sales <-  sales_ent %>% 
+    group_by(segment,lc) %>% 
+    summarise(v = sum(value),.groups = "drop") %>% 
+    filter(lc != "USD") %>%
+    mutate(f = v*1000000) %>% 
+    janitor::adorn_totals()
+  
+  
+  
+  # Global SGM  
+  
+  sgm_ent <- openxlsx::read.xlsx("global_sgm.xlsx") %>% 
+    janitor::clean_names() %>% 
+    as_tibble() %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    select(segment, region, sub_region, lc, entity, value)
+  
+  sgm <-  sgm_ent %>% 
+    filter(!entity %in% current.fx$entity ) %>% 
+    group_by(segment,lc) %>% 
+    summarise(v = sum(value),.groups = "drop") %>% 
+    filter(lc != "USD") %>%
+    mutate(f = v*1000000) %>% 
+    janitor::adorn_totals()
+  
+  
+  
+# Global SG&A  
+  
+  sganda_ent <- openxlsx::read.xlsx("sganda_global.xlsx") %>% 
+    janitor::clean_names() %>% 
+    as_tibble() %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    select(segment, region, sub_region, lc, entity, value)
+  
+  sga <-   sganda_ent %>%
+    filter(!entity %in% current.fx$entity ) %>% 
+    group_by(segment,lc) %>% 
+    summarise(v = sum(value),.groups = "drop") %>% 
+    filter(lc != "USD") %>%
+    mutate(f = v*1000000) %>% 
+    janitor::adorn_totals()
+    
+  
+  
+# Global OCOS  
+  
+  cosoth_ent <- openxlsx::read.xlsx("ocos_global.xlsx") %>% 
+    janitor::clean_names() %>% 
+    as_tibble() %>% 
+    mutate(region = ifelse(is.na(region),"NA",region)) %>% 
+    select(segment, region, sub_region, lc, entity, value)
+  
+  ocos <- cosoth_ent %>% 
+    filter(!entity %in% current.fx$entity ) %>% 
+    group_by(segment,lc) %>% 
+    summarise(v = sum(value),.groups = "drop") %>% 
+    filter(lc != "USD") %>%
+    mutate(f = v*1000000) %>% 
+    janitor::adorn_totals()
+  
+  
+  return(list(sales =  sales,
+              sgm   =  sgm,
+              sga   =  sga,
+              ocos  =  ocos))
+  }
   
   
