@@ -140,6 +140,9 @@ pull_long      <- SBD_FX()
 SBD_Rates_original <- function(){ 
   
 # Wider Pivot ::::::::::::::::::::::::::::::
+
+  library(lubridate)  
+  
 wider_pull <-
   # pull_long$table %>%
   pull_long %>% 

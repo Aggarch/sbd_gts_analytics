@@ -3,7 +3,7 @@
 library(readxl)
 library(tidyverse)
 
-dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.APR" 
+dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.M" 
 reconc <- "C:/Users/AEG1130/Documents/Reconcilation" 
 dimens <- "C:/Users/AEG1130/Documents/dimension" 
 fx     <- "C:/Users/AEG1130/Documents/fx" 
@@ -201,7 +201,7 @@ setwd(reconc)
     filter(dimension == "Entity") %>% 
     filter(sub_dimension == "EN-GTS_REG_TOT") %>% 
     filter(member_type == "Base") %>% 
-    filter(grepl("GTS_woACQ",x2))
+    filter(grepl("GTS_woACQ",x3))
   
   # For May filterable column will be x3, April ~ x2
   # how Possibly can be filterable column predictable? 
@@ -601,7 +601,7 @@ Ent_all <- openxlsx::read.xlsx("Ent_all.xlsx") %>%
 
 setwd(reconc)
 
-Ent_all %>% openxlsx::write.xlsx(.,"Ent_all.xlsx", overwrite = T) 
+Ent_all %>% openxlsx::write.xlsx(.,"Ent_all_raw.xlsx", overwrite = T) 
 
                              
 
@@ -650,9 +650,17 @@ Ent_all %>% openxlsx::write.xlsx(.,"Ent_all.xlsx", overwrite = T)
   # Volumes distribution by account and LC with reported currency 
   # Just entities not on current.fx
 
+setwd(reconc)
+  
+  
 fx.pnl.gaps <- function(){   
     
   # Global Sales  
+  
+  
+  current.fx <- openxlsx::read.xlsx('current.fx.xlsx') %>% 
+    as_tibble %>% janitor::clean_names()
+  
   
   sales_ent <- openxlsx::read.xlsx("global_sales_ytd.xlsx") %>% 
     janitor::clean_names() %>% 
@@ -746,4 +754,22 @@ fx.pnl.gaps <- function(){
               ocos  =  ocos))
   }
   
+
+# Original Ents
+original_ents <- current.fx %>% filter(!grepl("OPG",business)) %>% filter(!grepl("USD",lc))
+
+# Updated Ents
+current_ents <- Ent_all %>% filter(segment != "OPG", currency != "USD")
+
+current_ents <- Ent_all %>% filter(currency != "USD")
+
   
+# Missing Ents
+
+current_ents %>% anti_join(original_ents, by ="entity")
+
+
+# Ents.new 
+ents.new <- openxlsx::read.xlsx("ents.new.xlsx") %>% as_tibble() %>% 
+  rename(entity = Name) %>% 
+  select(entity, Description, Currency)
