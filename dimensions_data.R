@@ -216,6 +216,15 @@ setwd(reconc)
   current.fx <- openxlsx::read.xlsx('current.fx.xlsx') %>% 
     as_tibble %>% janitor::clean_names()
   
+  current.fx %>% group_by(region) %>% 
+    summarise(sales_lc = sum(sales_lc)) %>%
+    janitor::adorn_totals()
+  
+  
+  
+# Assuming::: Currency == LC, account == Net Sales, 
+# Entities == 551, Period == Apr, Scenario == ACTUAL.
+  
   without_ACQ <- count(woacq)
   entity_list <- count(current.fx)
   
