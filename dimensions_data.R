@@ -196,12 +196,20 @@ setwd(reconc)
   
 # FX Entities Analysis.  -----------------------------------------------------------
 
+# SUM an X to all below depending on the Month of observation. 
+
 # Entities for REG TOT, filtered by Base, and x2 == woACQ section.   
   woacq <- tables %>% 
     filter(dimension == "Entity") %>% 
     filter(sub_dimension == "EN-GTS_REG_TOT") %>% 
     filter(member_type == "Base") %>% 
     filter(grepl("GTS_woACQ",x3))
+  
+
+woacq.apr<-woacq # x ~ 2  
+woacq.may<-woacq # x ~ 3
+
+
   
   # For May filterable column will be x3, April ~ x2
   # how Possibly can be filterable column predictable? 
@@ -249,10 +257,10 @@ Entities <- function(){
  entities_NA <- function(){  
   
     # GTS Total Tools + OPG included NA  
-    gts_NA <- woacq %>% filter(grepl("_NA_", x3)) %>% 
+    gts_NA <- woacq %>% filter(grepl("_NA_", x4)) %>% 
     mutate(segment  = "Tools") %>% 
     mutate(region  = "NA") %>% 
-    rename(sub_region = x4) %>% 
+    rename(sub_region = x5) %>% 
     select(!contains("x")) %>% 
     filter(!grepl("DO NOT USE",description)) %>% 
     
@@ -289,6 +297,9 @@ Entities <- function(){
 # Counting test: count(na) + count(opg) == count(gts)
 
   
+# MAY ''NA'' x4 Subregion == x5
+# APR ''NA'' x3 Subregion == x4 
+ 
   
   
 # Questions: 
@@ -310,10 +321,10 @@ Entities <- function(){
   entities_EMEA <- function(){  
     
     # GTS Total Tools + OPG included NA  
-    gts_EMEA <- woacq %>% filter(grepl("EMEA", x4)) %>% 
+    gts_EMEA <- woacq %>% filter(grepl("EMEA", x5)) %>% 
       mutate(segment  = "Tools") %>% 
       mutate(region  = "EMEANZ") %>% 
-      rename(sub_region = x4) %>% 
+      rename(sub_region = x6) %>% 
       select(!contains("x")) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       
@@ -330,7 +341,7 @@ Entities <- function(){
     
     # Tools Entities not OPG , NA 
     tools_EMEA  <- woacq %>% 
-      filter(grepl("EMEA", x4)) %>%
+      filter(grepl("EMEA", x5)) %>%
       filter(!grepl("OPG",description)) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       select(dimension, sub_dimension,
@@ -357,10 +368,10 @@ Entities <- function(){
   entities_LAG <- function(){  
     
     # GTS Total Tools + OPG included NA  
-    gts_LAG <- woacq %>% filter(grepl("GTS_LAG_REG_TOT", x5)) %>% 
+    gts_LAG <- woacq %>% filter(grepl("GTS_LAG_REG_TOT", x6)) %>% 
       mutate(segment  = "Tools") %>% 
       mutate(region  = "LAG") %>% 
-      rename(sub_region = x5) %>% 
+      rename(sub_region = x7) %>% 
       select(!contains("x")) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       
@@ -377,7 +388,7 @@ Entities <- function(){
     
     # Tools Entities not OPG , NA 
     tools_LAG  <- woacq %>% 
-      filter(grepl("LAG", x4)) %>%
+      filter(grepl("LAG", x5)) %>%
       filter(!grepl("OPG",description)) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       select(dimension, sub_dimension,
@@ -402,10 +413,10 @@ Entities <- function(){
   entities_ASIA <- function(){  
     
     # GTS Total Tools + OPG included NA  
-    gts_ASIA <- woacq %>% filter(grepl("ASIA_REG", x5)) %>% 
+    gts_ASIA <- woacq %>% filter(grepl("ASIA_REG", x6)) %>% 
       mutate(segment  = "Tools") %>% 
       mutate(region  = "ASIA") %>% 
-      rename(sub_region = x5) %>% 
+      rename(sub_region = x6) %>% 
       select(!contains("x")) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       
@@ -422,7 +433,7 @@ Entities <- function(){
     
     # Tools Entities not OPG , NA 
     tools_ASIA  <- woacq %>% 
-      filter(grepl("ASIA", x4)) %>%
+      filter(grepl("ASIA", x5)) %>%
       filter(!grepl("OPG",description)) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       select(dimension, sub_dimension,
@@ -446,10 +457,10 @@ Entities <- function(){
   entities_ASIA_MFG <- function(){  
     
     # GTS Total Tools + OPG included NA  
-    gts_ASIA_MFG <- woacq %>% filter(grepl("ASIA_MFG_REG_TOT", x4)) %>% 
+    gts_ASIA_MFG <- woacq %>% filter(grepl("ASIA_MFG_REG_TOT", x5)) %>% 
       mutate(segment  = "Tools") %>% 
       mutate(region  = "ASIA_MFG") %>% 
-      rename(sub_region = x5) %>% 
+      rename(sub_region = x6) %>% 
       select(!contains("x")) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       
@@ -466,7 +477,7 @@ Entities <- function(){
     
     # Tools Entities not OPG , NA 
     tools_ASIA_MFG  <- woacq %>% 
-      filter(grepl("ASIA_MFG_REG_TOT", x4)) %>%
+      filter(grepl("ASIA_MFG_REG_TOT", x5)) %>%
       filter(!grepl("OPG",description)) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       select(dimension, sub_dimension,
@@ -490,10 +501,10 @@ Entities <- function(){
   entities_HQ <- function(){  
     
     # GTS Total Tools + OPG included NA  
-    gts_HQ <- woacq %>% filter(grepl("GTS_HQ_WOAdj_REG_TOT", x4)) %>% 
+    gts_HQ <- woacq %>% filter(grepl("GTS_HQ_WOAdj_REG_TOT", x5)) %>% 
       mutate(segment  = "Tools") %>% 
       mutate(region  = "GTS_HQ") %>% 
-      rename(sub_region = x4) %>% 
+      rename(sub_region = x6) %>% 
       select(!contains("x")) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       
@@ -510,7 +521,7 @@ Entities <- function(){
     
     # Tools Entities not OPG , NA 
     tools_HQ  <- woacq %>% 
-      filter(grepl("GTS_HQ_woAdj_TOT", x4)) %>%
+      filter(grepl("GTS_HQ_woAdj_TOT", x5)) %>%
       filter(!grepl("OPG",description)) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       select(dimension, sub_dimension,
@@ -535,10 +546,10 @@ Entities <- function(){
   entities_HEDGE <- function(){  
     
     # GTS Total Tools + OPG included NA  
-    gts_HEDGE <- woacq %>% filter(grepl("GTS_HQ_ADJ_TOT", x4)) %>% 
+    gts_HEDGE <- woacq %>% filter(grepl("GTS_HQ_ADJ_TOT", x5)) %>% 
       mutate(segment  = "Tools") %>% 
       mutate(region  = "GTS_HEDGE") %>% 
-      rename(sub_region = x4) %>% 
+      rename(sub_region = x6) %>% 
       select(!contains("x")) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       
@@ -555,7 +566,7 @@ Entities <- function(){
     
     # Tools Entities not OPG , NA 
     tools_HEDGE  <- woacq %>% 
-      filter(grepl("GTS_HQ_woAdj_TOT", x4)) %>%
+      filter(grepl("GTS_HQ_woAdj_TOT", x5)) %>%
       filter(!grepl("OPG",description)) %>% 
       filter(!grepl("DO NOT USE",description)) %>% 
       select(dimension, sub_dimension,
@@ -593,11 +604,7 @@ return(list(NAm   = NAm,
 }
   
 Ent_all <- Entities() %>% 
-    map_dfr(.,bind_rows)  
-  
-
-
-Ent_all <- openxlsx::read.xlsx("Ent_all.xlsx") %>% 
+    map_dfr(.,bind_rows) %>% 
   as_tibble() %>% 
   mutate(region = ifelse(is.na(region),"NA",region)) %>% 
   mutate(region =  case_when(region == "NA"~"North America",
