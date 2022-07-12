@@ -116,7 +116,9 @@ last  <- rates_table(fx_last)
 
 
 # Merged Cleaned Data (FX RATES) :::::::::::
-# Equivalent to the daily_rates sheet on SBD_Rates.xlsx
+# Equivalent to the daily_rates sheet on SBD_Rates.xlsx dwl3
+
+
 
  pull_long <- table$table %>%
    bind_rows(last$table) %>% 
@@ -250,3 +252,68 @@ getwd()
 setwd("C:/Users/AEG1130/Documents")
 
 transact <- openxlsx::read.xlsx("fx_trans.xlsx")
+
+
+
+# Pivot Summaries NoFin Extraction ----------------------------------------
+
+setwd(model)
+getwd()
+
+remove_lag = c("CCA incl PR","Colombia","Argentina Commercial",
+               "Chile","Peru","LAG SOUTH HQ")
+
+psum <- read.xlsx("pivot_summ_june_close.xlsx") %>% as_tibble() %>% 
+        janitor::clean_names() %>% 
+        select(month,scenario,entity,business,
+               region,market_1,lc,pnl_rates,transactional_fx) %>% 
+        filter(grepl("ACTUAL_POST",scenario)) %>% 
+  filter(!grepl("OPG",region)) %>% 
+  filter(!grepl("DORMANT",region)) %>% 
+  filter(entity != "[none]") %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
+
+pnl_rates <- psum %>% select(month,lc,pnl_rates) %>% 
+  distinct() %>% 
+  pivot_wider(names_from = month, values_from = "pnl_rates") %>% 
+  rename_at(vars(-lc), ~ paste0(., '_Pnl_Rates'))
+
+
+psum %>% group_by(month) %>% 
+  summarise(transfx = sum(transactional_fx)) %>%
+  janitor::adorn_totals()
+
+psum_wider <- psum %>%
+  select(-pnl_rates) %>% 
+  pivot_wider(names_from = month, 
+              values_from = transactional_fx) %>% 
+  mutate_all(funs(replace(., is.na(.), 0))) %>% 
+  # mutate(pnl_rates = as.character(pnl_rates)) %>% 
+  mutate(all_period_sum = rowSums(across(where(is.numeric)))) %>% 
+  filter(all_period_sum != 0) %>% 
+  select(-all_period_sum)
+  
+
+# Remove LAG entities that run AVG cost,
+# TOOLS FX FACTOR LAG , OCOS == 0
+
+
+psum_no_lag <- psum_wider %>% 
+  #filter(!market_1 %in% remove_lag)
+  mutate(LAG_ex = ifelse(market_1 %in% remove_lag, "yes", "no")) %>% 
+  left_join(pnl_rates, by = "lc") %>% 
+  relocate(.after = Jan, Jan_Pnl_Rates) %>% 
+  relocate(.after = Feb, Feb_Pnl_Rates) %>% 
+  relocate(.after = Mar, Mar_Pnl_Rates) %>% 
+  relocate(.after = Apr, Apr_Pnl_Rates) %>% 
+  relocate(.after = May, May_Pnl_Rates) %>% 
+  relocate(.after = Jun, Jun_Pnl_Rates)
+
+
+
+
+# psum_no_lag %>% openxlsx::write.xlsx(.,"pivot_summ_transf.xlsx")
+
+
+
