@@ -255,7 +255,7 @@ transact <- openxlsx::read.xlsx("fx_trans.xlsx")
 
 
 
-# Pivot Summaries NoFin Extraction ----------------------------------------
+# Pivot Summaries Actuals NoFin Extraction ----------------------------------------
 
 setwd(model)
 getwd()
@@ -384,3 +384,139 @@ TransFX_OCOS_YTD <- transFX()
 
 
 TransFX_OCOS_YTD %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD.xlsx")
+
+
+
+
+
+
+# Pivot Summaries F07 TransFX Extraction ----------------------------------------
+
+setwd(model)
+getwd()
+
+
+remove_lag = c("CCA incl PR","Colombia","Argentina Commercial",
+               "Chile","Peru","LAG SOUTH HQ")
+
+psum <- read.xlsx("pivot_summ_f07_close.xlsx") %>% as_tibble() %>% 
+  janitor::clean_names() %>% 
+  select(month,scenario,entity,business,
+         region,market_1,lc,pnl_rates,transactional_fx) %>% 
+  filter(grepl("CFCST",scenario)) %>% 
+  filter(!grepl("OPG",region)) %>% 
+  filter(!grepl("DORMANT",region)) %>% 
+  filter(entity != "[none]") %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
+
+pnl_rates <- psum %>% select(month,lc,pnl_rates) %>% 
+  distinct() %>% 
+  pivot_wider(names_from = month, values_from = "pnl_rates") %>% 
+  rename_at(vars(-lc), ~ paste0(., '_Pnl_Rates'))
+
+
+psum %>% group_by(month) %>% 
+  summarise(transfx = sum(transactional_fx)) %>%
+  janitor::adorn_totals()
+
+psum_wider <- psum %>%
+  select(-pnl_rates) %>% 
+  pivot_wider(names_from = month, 
+              values_from = transactional_fx) %>% 
+  mutate_all(funs(replace(., is.na(.), 0))) %>% 
+  # mutate(pnl_rates = as.character(pnl_rates)) %>% 
+  mutate(all_period_sum = rowSums(across(where(is.numeric)))) %>% 
+  filter(all_period_sum != 0) %>% 
+  select(-all_period_sum)
+
+
+# Remove LAG entities that run AVG cost,
+# TOOLS FX FACTOR LAG , OCOS == 0
+
+
+psum_no_lag <- psum_wider %>% 
+  #filter(!market_1 %in% remove_lag)
+  mutate(LAG_ex = ifelse(market_1 %in% remove_lag, "yes", "no")) %>% 
+  left_join(pnl_rates, by = "lc") %>% 
+  relocate(.after = Jul, Jul_Pnl_Rates) %>% 
+  relocate(.after = Aug, Aug_Pnl_Rates) %>% 
+  relocate(.after = Sep, Sep_Pnl_Rates) %>% 
+  relocate(.after = Oct, Oct_Pnl_Rates) %>% 
+  relocate(.after = Nov, Nov_Pnl_Rates) %>% 
+  relocate(.after = Dec, Dec_Pnl_Rates)
+
+
+# psum_no_lag %>% openxlsx::write.xlsx(.,"pivot_summ_transf.xlsx")
+
+# OCOS Transactional Carve Out OPG 
+
+vect_math <- read.xlsx("pivot_summ_transf.xlsx", sheet = "Dist") %>% as_tibble()
+
+
+fx_factor_ocos <- read.xlsx("fx_factor_ocos.xlsx") %>% as_tibble() %>% 
+  filter(region_market %in% vect_math$Reg) %>% 
+  rename(business_market = region_market) %>% 
+  rename_at(vars(-business_market), ~ paste0(., '_ocos_dist')) %>% 
+  select(business_market,contains(c("Jul","Aug","Sep","Oct","Nov","Dec")))
+
+transFX_ocos <- psum_no_lag %>%
+  left_join(fx_factor_ocos, by = c("business" = "business_market")) %>% 
+  left_join(fx_factor_ocos, by = c("market_1" = "business_market"))
+
+transFX <- function(){ 
+  
+  transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>% 
+    unite("Jul_ocos_dist",Jul_ocos_dist.x,Jul_ocos_dist.y) %>% 
+    unite("Aug_ocos_dist",Aug_ocos_dist.x,Aug_ocos_dist.y) %>%  
+    unite("Sep_ocos_dist",Sep_ocos_dist.x,Sep_ocos_dist.y) %>% 
+    unite("Oct_ocos_dist",Oct_ocos_dist.x,Oct_ocos_dist.y) %>% 
+    unite("Nov_ocos_dist",Nov_ocos_dist.x,Nov_ocos_dist.y) %>% 
+    unite("Dec_ocos_dist",Dec_ocos_dist.x,Dec_ocos_dist.y) %>% 
+    
+    mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"NA_","")) %>% 
+    mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"_NA","")) %>% 
+    
+    mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"NA_","")) %>% 
+    mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"_NA","")) %>% 
+    
+    mutate(Sep_ocos_dist = str_replace_all(Sep_ocos_dist,"NA_","")) %>% 
+    mutate(Sep_ocos_dist = str_replace_all(Sep_ocos_dist,"_NA","")) %>% 
+    
+    mutate(Oct_ocos_dist = str_replace_all(Oct_ocos_dist,"NA_","")) %>% 
+    mutate(Oct_ocos_dist = str_replace_all(Oct_ocos_dist,"_NA","")) %>% 
+    
+    mutate(Nov_ocos_dist = str_replace_all(Nov_ocos_dist,"NA_","")) %>% 
+    mutate(Nov_ocos_dist = str_replace_all(Nov_ocos_dist,"_NA","")) %>% 
+    
+    mutate(Dec_ocos_dist = str_replace_all(Dec_ocos_dist,"NA_","")) %>% 
+    mutate(Dec_ocos_dist = str_replace_all(Dec_ocos_dist,"_NA","")) %>% 
+    
+    
+    separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_") %>%
+    separate(Aug_ocos_dist, c("Aug_ocos_dist", "b"), "_") %>%
+    separate(Sep_ocos_dist, c("Sep_ocos_dist", "b"), "_") %>%
+    separate(Oct_ocos_dist, c("Oct_ocos_dist", "b"), "_") %>%
+    separate(Nov_ocos_dist, c("Nov_ocos_dist", "b"), "_") %>%
+    separate(Dec_ocos_dist, c("Dec_ocos_dist", "b"), "_") %>% 
+    select(-b)
+  
+  
+  
+  TransFX_OCOS_YTD_F07 <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") %>% 
+    relocate(.after = Jul, Jul_ocos_dist) %>% 
+    relocate(.after = Aug, Aug_ocos_dist) %>% 
+    relocate(.after = Sep, Sep_ocos_dist) %>% 
+    relocate(.after = Oct, Oct_ocos_dist) %>% 
+    relocate(.after = Nov, Nov_ocos_dist) %>% 
+    relocate(.after = Dec, Dec_ocos_dist)  
+  
+  
+  retun(TransFX_OCOS_YTD_F07)
+  
+}
+
+TransFX_OCOS_YTD_F07 <- transFX()
+
+
+TransFX_OCOS_YTD_F07 %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_F07.xlsx")
