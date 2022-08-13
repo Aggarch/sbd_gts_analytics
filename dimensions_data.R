@@ -4,10 +4,9 @@ library(readxl)
 library(tidyverse)
 
 dimensions <- "C:/Users/AEG1130/Documents/DDIMENS.M" 
-reconc <- "C:/Users/AEG1130/Documents/Reconcilation" 
-dimens <- "C:/Users/AEG1130/Documents/dimension" 
-fx     <- "C:/Users/AEG1130/Documents/fx" 
-
+reconc     <- "C:/Users/AEG1130/Documents/Reconcilation" 
+dimens     <- "C:/Users/AEG1130/Documents/dimension" 
+fx         <- "C:/Users/AEG1130/Documents/fx" 
 
 
 setwd(dimensions)
@@ -53,6 +52,17 @@ tables <- resources %>% pmap(dimens) %>%
           map_dfr(.,bind_rows) %>% 
   select(-pln_member_type, -base)
 
+
+
+# Looking for an Account  -------------------------------------------------
+
+acct <- function(account)
+  {
+tables %>%
+  filter(dimension == "Account") %>%
+  filter(grepl("FX",structure)) %>%
+  filter(grepl(account,structure)) %>% select(dimension, sub_dimension, name, description)
+}
 
 setwd(dimens)
 

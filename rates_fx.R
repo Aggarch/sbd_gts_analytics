@@ -3,6 +3,8 @@
 
 fx      <- "//americas.swk.pri/Apps/Enterprise/Reval/IntRptg/FXRates/Reval/Loaded" 
 fx_last <- "//americas.swk.pri/Apps/Enterprise/Reval/IntRptg/FXRates/Reval" 
+reconc     <- "C:/Users/AEG1130/Documents/Reconcilation" 
+
 model   <- "C:/Users/AEG1130/Documents/fx"   
 docs    <- "C:/Users/AEG1130/Documents" 
 
@@ -119,7 +121,6 @@ last  <- rates_table(fx_last)
 # Equivalent to the daily_rates sheet on SBD_Rates.xlsx dwl3
 
 
-
  pull_long <- table$table %>%
    bind_rows(last$table) %>% 
    distinct()
@@ -148,7 +149,7 @@ SBD_Rates_original <- function(){
 wider_pull <-
   # pull_long$table %>%
   pull_long %>% 
-  filter(date >= today() %m-% days(30)) %>% 
+ # filter(date >= today() %m-% days(60)) %>% 
   select(from_ccy, date, inverse_spot_rate) %>% 
   pivot_wider(names_from = date, values_from = inverse_spot_rate)
 
@@ -260,6 +261,9 @@ transact <- openxlsx::read.xlsx("fx_trans.xlsx")
 setwd(model)
 getwd()
 
+# pivot_summ_last <- openxlsx::read.xlsx("TOOLS_FX_2022_JUL_CLOSE.xlsx", sheet = "Pivot Summaries") %>% 
+#   as_tibble()
+
 
 remove_lag = c("CCA incl PR","Colombia","Argentina Commercial",
                "Chile","Peru","LAG SOUTH HQ")
@@ -309,7 +313,9 @@ psum_no_lag <- psum_wider %>%
   relocate(.after = Mar, Mar_Pnl_Rates) %>% 
   relocate(.after = Apr, Apr_Pnl_Rates) %>% 
   relocate(.after = May, May_Pnl_Rates) %>% 
-  relocate(.after = Jun, Jun_Pnl_Rates)
+  relocate(.after = Jun, Jun_Pnl_Rates) %>% 
+  relocate(.after = Jul, Jul_Pnl_Rates)
+
 
 
 # psum_no_lag %>% openxlsx::write.xlsx(.,"pivot_summ_transf.xlsx")
@@ -326,7 +332,7 @@ fx_factor_ocos <- read.xlsx("fx_factor_ocos.xlsx") %>% as_tibble() %>%
 
 transFX_ocos <- psum_no_lag %>%
   left_join(fx_factor_ocos, by = c("business" = "business_market")) %>% 
-  left_join(fx_factor_ocos, by = c("market_1" = "business_market"))
+  left_join(fx_factor_ocos, by = c("market_1" = "business_market")) 
 
 transFX <- function(){ 
 
@@ -337,6 +343,8 @@ transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>%
   unite("Apr_ocos_dist",Apr_ocos_dist.x,Apr_ocos_dist.y) %>% 
   unite("May_ocos_dist",May_ocos_dist.x,May_ocos_dist.y) %>% 
   unite("Jun_ocos_dist",Jun_ocos_dist.x,Jun_ocos_dist.y) %>% 
+  unite("Jul_ocos_dist",Jul_ocos_dist.x,Jul_ocos_dist.y) %>% 
+  
 
   mutate(Jan_ocos_dist = str_replace_all(Jan_ocos_dist,"NA_","")) %>% 
   mutate(Jan_ocos_dist = str_replace_all(Jan_ocos_dist,"_NA","")) %>% 
@@ -355,7 +363,9 @@ transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>%
   
   mutate(Jun_ocos_dist = str_replace_all(Jun_ocos_dist,"NA_","")) %>% 
   mutate(Jun_ocos_dist = str_replace_all(Jun_ocos_dist,"_NA","")) %>% 
-  
+    
+  mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"NA_","")) %>% 
+  mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"_NA","")) %>% 
   
     separate(Jan_ocos_dist, c("Jan_ocos_dist", "b"), "_") %>%
     separate(Feb_ocos_dist, c("Feb_ocos_dist", "b"), "_") %>%
@@ -363,8 +373,10 @@ transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>%
     separate(Apr_ocos_dist, c("Apr_ocos_dist", "b"), "_") %>%
     separate(May_ocos_dist, c("May_ocos_dist", "b"), "_") %>%
     separate(Jun_ocos_dist, c("Jun_ocos_dist", "b"), "_") %>% 
-  select(-b)
+    separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_")  
     
+    
+
 
 
 TransFX_OCOS_YTD <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") %>% 
@@ -373,21 +385,59 @@ TransFX_OCOS_YTD <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") 
   relocate(.after = Mar, Mar_ocos_dist) %>% 
   relocate(.after = Apr, Apr_ocos_dist) %>% 
   relocate(.after = May, May_ocos_dist) %>% 
-  relocate(.after = Jun, Jun_ocos_dist)  
+  relocate(.after = Jun, Jun_ocos_dist) %>% 
+  relocate(.after = Jul, Jul_ocos_dist)  
 
 
-retun(TransFX_OCOS_YTD)
+
+return(TransFX_OCOS_YTD)
 
 }
 
 TransFX_OCOS_YTD <- transFX()
 
 
-TransFX_OCOS_YTD %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD.xlsx")
+TransFX_OCOS_YTD %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_july.xlsx", overwrite = T)
 
 
 
 
+# Looking for FX accounts -------------------------------------------------
+
+
+acct <- function(account){
+  
+  tables %>%
+    filter(dimension == "Account") %>%
+    filter(grepl("FX",structure)) %>%
+    filter(grepl(account,structure)) %>% select(dimension, sub_dimension, name, description)
+}
+
+# Ents Update -------------------------------------------------------------
+
+
+setwd(model)
+fx_ent <- openxlsx::read.xlsx("fx_ents.xlsx") %>% as_tibble() %>% 
+  janitor::clean_names()
+
+
+setwd(reconc)
+ent_all <- openxlsx::read.xlsx("ent_all_aug22.xlsx") %>%
+  as_tibble() %>% 
+select(entity,Value)
+
+
+ttt <- ent_all %>% mutate(ttt = entity %in% fx_ent$entity)
+
+
+ent_all %>% anti_join(fx_ent, by = "entity")
+fx_ent %>% anti_join(ent_all, by = "entity")
+
+
+check_ent <- fx_ent %>% 
+  left_join(ent_all, by = "entity") %>% 
+  mutate(diff_check = sales_usd_impact - Value) %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
 
 
 # Pivot Summaries F07 TransFX Extraction ----------------------------------------
