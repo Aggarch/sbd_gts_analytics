@@ -261,6 +261,9 @@ transact <- openxlsx::read.xlsx("fx_trans.xlsx")
 setwd(model)
 getwd()
 
+library(tidyverse)
+library(openxlsx)
+
 # pivot_summ_last <- openxlsx::read.xlsx("TOOLS_FX_2022_JUL_CLOSE.xlsx", sheet = "Pivot Summaries") %>% 
 #   as_tibble()
 
@@ -375,10 +378,7 @@ transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>%
     separate(Jun_ocos_dist, c("Jun_ocos_dist", "b"), "_") %>% 
     separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_")  
     
-    
-
-
-
+   
 TransFX_OCOS_YTD <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") %>% 
   relocate(.after = Jan, Jan_ocos_dist) %>% 
   relocate(.after = Feb, Feb_ocos_dist) %>% 
@@ -396,10 +396,33 @@ return(TransFX_OCOS_YTD)
 
 TransFX_OCOS_YTD <- transFX()
 
+setwd(model)
+TransFX_OCOS_YTD %>%  openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_JULY") 
+  
 
-TransFX_OCOS_YTD %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_july.xlsx", overwrite = T)
+
+# LH INP01 Template BAR Upload  -------------------------------------------
 
 
+TransFX_OCOS_YTD <- openxlsx::read.xlsx("TransFX_OCOS_YTD_LC_REPORTED_JULY.xlsx",sheet = "LC_JULY") %>% 
+  select(entity, OCOS_TRANSFX_LC_JUL)
+
+
+OCOS_Transactional_FX_INP01 <- openxlsx::read.xlsx("OCOS_Transactional_FX_INP01.xlsx") %>% 
+  select(LocalCur) %>% mutate(entity = str_replace_all(LocalCur,"<<",""))
+
+# For Laura Hamblin template /// 
+LH_del <- OCOS_Transactional_FX_INP01 %>% 
+  left_join(TransFX_OCOS_YTD, by = "entity") %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
+LH_del %>% openxlsx::write.xlsx(.,"LH_del.xlsx")
+
+# On template not on data pull 
+OCOS_Transactional_FX_INP01 %>% anti_join(TransFX_OCOS_YTD, by = "entity")
+
+# On data pull not on template 
+TransFX_OCOS_YTD %>% anti_join(OCOS_Transactional_FX_INP01, by = "entity")
 
 
 # Looking for FX accounts -------------------------------------------------
