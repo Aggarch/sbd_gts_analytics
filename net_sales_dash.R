@@ -80,11 +80,14 @@ nsales <- function(){
     mutate(result = str_replace_all(result,'PRD_OAC_RPTSBD[[:digit:]]+',"PRD_OAC_RPTSBD01")) %>%  
     relocate(.after = dts, result) %>%  
     relocate(.after = brand, years) %>% 
-    relocate(.after = years, period)
+    relocate(.after = years, period) %>% 
+    mutate(index = as.numeric(index)) %>% 
+    mutate(result = ifelse(region_channel == "Retail Other", paste0("=Q",index-7,"-SUM(Q",index-6,":Q",index-1,")"),result))
 
+    
+    ns_structure %>% openxlsx::write.xlsx("ns_struct.t.xlsx", overwrite = T)
   
-    ns_structure %>% openxlsx::write.xlsx("ns_struct.xlsx", overwrite = T)
-  
+    
   return(ns_structure)
   
 }
