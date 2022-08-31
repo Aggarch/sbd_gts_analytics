@@ -19,7 +19,7 @@ setwd(net_sales_data)
 
 
 # Build all the queries needed to extract the last 5 years P&L Data. 
-query_meta <- function(observ_year, observ_month){ 
+query_meta <- function(observ_year, observ_month, product){ 
   
   file <- openxlsx::read.xlsx("ref/tidy_ns_query.xlsx") %>% as_tibble()
   
@@ -29,7 +29,7 @@ query_meta <- function(observ_year, observ_month){
     select(-years, -period) %>% 
     mutate(observation = observ_year,
            period = observ_month) 
-  
+
   return(chasis)
   
 }
@@ -39,32 +39,45 @@ query_meta <- function(observ_year, observ_month){
 timing <- function(period){ 
   
   times <- tibble(observ_month  = month.name) %>% 
-    mutate(observ_year = period)
-  
+    mutate(observ_year = period) 
+
   return(times)
   
 }
 
-years   <- tibble(period = 2017  : year(today()))
+years   <- tibble(period = 2018  : year(today()))
 
-periods <-  map(years$period, 
+periods <-  map(years$period,
                 timing) %>% 
   map_dfr(., bind_rows) 
 
 
+# Products Iteration
+
+product <- tibble(prd = c("Total Product", "PTG", "HTAS"))
+
+fill.prd = function(prd){
+  ns_struct %>% 
+  mutate(product = prd)
+}
+
 
 nsales <- function(){ 
   
-  ns_structure <- map2(periods$observ_year, 
-                       periods$observ_month,
-                       query_meta) %>% 
+  ns_struct <- map2(periods$observ_year, 
+                    periods$observ_month,
+                    query_meta) %>% 
+               map_dfr(., bind_rows) 
     
-    map_dfr(., bind_rows) %>% 
+  
+  ns_structure<-  map(product$prd,fill.prd) %>% 
+               map_dfr(., bind_rows) %>% 
+    
     arrange(desc(observation)) %>% 
     mutate(year_num = substr(observation, 3,4)) %>% 
     mutate(year_num = as.double(year_num)) %>% 
     mutate(year_num = ifelse(type == "actual_sales_PY", year_num-1, year_num)) %>% 
-    mutate(year_num = ifelse(type == "actual_sales_PY2", year_num-1, year_num)) %>% 
+    mutate(year_num = ifelse(type == "actual_sales_2PY", year_num-2, year_num)) %>% 
     
     mutate(years = paste0("FY",year_num)) %>% 
     mutate(month = match(period, month.name)) %>%  
@@ -82,13 +95,27 @@ nsales <- function(){
     relocate(.after = brand, years) %>% 
     relocate(.after = years, period) %>% 
     mutate(index = as.numeric(index)) %>% 
-    mutate(result = ifelse(region_channel == "Retail Other", paste0("=Q",index-7,"-SUM(Q",index-6,":Q",index-1,")"),result))
-
+    mutate(result = ifelse(region_channel == "Retail Other", paste0("=Q",index-7,"-SUM(Q",index-6,":Q",index-1,")"),result)) %>% 
+    mutate(result = ifelse(region_channel == "NA Other", paste0("=Q",index-11,"-Q",index-10,"-Q",index-2,"-Q",index-1),result)) %>% 
+    mutate(result = ifelse(region_channel == "EMEA ANZ Other", paste0("=Q",index-7,"-SUM(Q",index-6,":Q",index-1,")"),result)) %>% 
+    mutate(result = ifelse(region_channel == "LAG Other", paste0("=Q",index-4,"-SUM(Q",index-3,":Q",index-1,")"),result)) %>% 
+    mutate(result = ifelse(region_channel == "Asia Other", paste0("=Q",index-5,"-SUM(Q",index-4,":Q",index-1,")"),result))
+  
     
     ns_structure %>% openxlsx::write.xlsx("ns_struct.t.xlsx", overwrite = T)
-  
+    
+    # 595*5*12*3
     
   return(ns_structure)
   
 }
 
+  
+    # After getting the results from BAR, calculate Others. where:
+    # Total Prod - PTG - HTAS == Other. 
+
+
+    # ns_structure %>% 
+    #   select(region_channel, type,
+    #          region, product, result,ref_date) %>% 
+    #   relocate(.after = product, ref_date)
