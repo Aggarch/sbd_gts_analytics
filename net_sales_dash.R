@@ -122,7 +122,13 @@ nsales <- function(){
     mutate(result = ifelse(region_channel == "NA Other", paste0("=Q",index-11,"-Q",index-10,"-Q",index-2,"-Q",index-1),result)) %>% 
     mutate(result = ifelse(region_channel == "EMEA ANZ Other", paste0("=Q",index-7,"-SUM(Q",index-6,":Q",index-1,")"),result)) %>% 
     mutate(result = ifelse(region_channel == "LAG Other", paste0("=Q",index-4,"-SUM(Q",index-3,":Q",index-1,")"),result)) %>% 
-    mutate(result = ifelse(region_channel == "Asia Other", paste0("=Q",index-5,"-SUM(Q",index-4,":Q",index-1,")"),result))
+    mutate(result = ifelse(region_channel == "Asia Other", paste0("=Q",index-5,"-SUM(Q",index-4,":Q",index-1,")"),result)) %>% 
+    mutate(region_channel = ifelse(product == "HTAS" & region_channel == "Tools", "HTAS", region_channel)) %>% 
+    mutate(region_channel = ifelse(product == "PTG" & region_channel == "Tools", "PTG", region_channel)) %>% 
+    mutate(region_channel = ifelse(product == "Other" & region_channel == "Tools", "Other", region_channel))
+
+  
+  
   
     
     ns_structure %>% openxlsx::write.xlsx("ns_struct_hist.xlsx", overwrite = T)
@@ -135,12 +141,10 @@ nsales <- function(){
 
 
 
-# BAR Pull Results --------------------------------------------------------
+# BAR Pull Results Wider --------------------------------------------------------
 
 
-
-
-netsales <- openxlsx::read.xlsx("ns_struct.t.xlsx") %>% 
+netsales <- openxlsx::read.xlsx("raw_ns.xlsx") %>% 
   as_tibble() %>% 
   mutate(result = ifelse(is.na(result),0,result))
 
@@ -155,6 +159,7 @@ grouped_ns <- netsales %>%
          actual_sales_2PY,fcst_price,op_price,fcst_salesvol,op_salesvol,
          actual_salesfx,actual_salesacqdiv,actual_salesvol,actual_price,
          actual_salesfxvqr,fcst_salesacqdiv,actual_salesfxvop,op_salesacqdiv)
+
 
     # After getting the results from BAR, calculate Others. where:
     # Total Prod - PTG - HTAS == Other. 
