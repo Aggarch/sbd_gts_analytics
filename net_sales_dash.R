@@ -2,7 +2,7 @@
 # <> Net Sales Structure <>  --------------------------------------------------------
 
 
-# From Basic Organics structure, {COLLECTION/IMPORTATION}
+# From Basic structure, {COLLECTION/IMPORTATION}
 # Iterative functionality to offer all Ad hocs organics across Regions, . 
 # BA&R recursive refreshal as a result of HsGet formula by row. 
 
@@ -13,7 +13,7 @@
 library(tidyverse)
 library(lubridate)
 
-net_sales_data         <- "C:/Users/AEG1130/Documents/Net Sales/"
+net_sales_data  <- "C:/Users/AEG1130/Documents/Net Sales/"
 
 setwd(net_sales_data)
 
@@ -41,7 +41,7 @@ query_meta <- function(observ_year, observ_month, product){
 
 # Times & Iterations ------------------------------------------------------
 
-timing <- function(period){ 
+timing  <- function(period){ 
   
   times <- tibble(observ_month  = month.name) %>% 
     mutate(observ_year = period) 
@@ -60,9 +60,9 @@ periods <-  map(years$period,
 
 # Products Iteration ------------------------------------------------------
 
-product <- tibble(prd = c("Total Product", "PTG", "HTAS", "Other"))
+product  <- tibble(prd = c("Total Product", "PTG", "HTAS", "Other"))
 
-fill.prd = function(prd){
+fill.prd <- function(prd){
   ns_struct %>% 
   mutate(product = prd)
 }
@@ -122,15 +122,9 @@ nsales <- function(){
     mutate(result = ifelse(region_channel == "NA Other", paste0("=Q",index-11,"-Q",index-10,"-Q",index-2,"-Q",index-1),result)) %>% 
     mutate(result = ifelse(region_channel == "EMEA ANZ Other", paste0("=Q",index-7,"-SUM(Q",index-6,":Q",index-1,")"),result)) %>% 
     mutate(result = ifelse(region_channel == "LAG Other", paste0("=Q",index-4,"-SUM(Q",index-3,":Q",index-1,")"),result)) %>% 
-    mutate(result = ifelse(region_channel == "Asia Other", paste0("=Q",index-5,"-SUM(Q",index-4,":Q",index-1,")"),result)) %>% 
-    mutate(region_channel = ifelse(product == "HTAS" & region_channel == "Tools", "HTAS", region_channel)) %>% 
-    mutate(region_channel = ifelse(product == "PTG" & region_channel == "Tools", "PTG", region_channel)) %>% 
-    mutate(region_channel = ifelse(product == "Other" & region_channel == "Tools", "Other", region_channel))
-
+    mutate(result = ifelse(region_channel == "Asia Other", paste0("=Q",index-5,"-SUM(Q",index-4,":Q",index-1,")"),result))
   
   
-  
-    
     ns_structure %>% openxlsx::write.xlsx("ns_struct_hist.xlsx", overwrite = T)
     
     # 595*5*12*4
@@ -141,31 +135,91 @@ nsales <- function(){
 
 
 
-# BAR Pull Results Wider --------------------------------------------------------
+# BAR Pull Results Wider --------------------------------------------------
 
 
 netsales <- openxlsx::read.xlsx("raw_ns.xlsx") %>% 
   as_tibble() %>% 
-  mutate(result = ifelse(is.na(result),0,result))
+  mutate(result = ifelse(is.na(result),0,result)) 
 
+
+
+
+net_sales_ingest <- function(){ 
+  
 grouped_ns <- netsales %>% 
-  group_by(observation, 
+  
+  mutate(region_channel = ifelse(product == "HTAS" & region_channel == "Tools", "HTAS", region_channel)) %>% 
+  mutate(region_channel = ifelse(product == "PTG" & region_channel == "Tools", "PTG", region_channel)) %>% 
+  mutate(region_channel = ifelse(product == "Other" & region_channel == "Tools", "Other", region_channel)) %>% 
+  
+ group_by(observation, 
            period, product, region,
            region_channel, type) %>% 
   summarise(result = sum(result),.groups = "drop") %>% 
   pivot_wider(names_from = type, values_from = result) %>% 
+  
+  # subzero items 
+  mutate(fcst_salesacqdiv = actual_salesacqdiv - fcst_salesacqdiv) %>% 
+  mutate(op_salesacqdiv = actual_salesacqdiv - op_salesacqdiv) %>% 
+  # 10 fields formulation
+  
+  # VPY
+  mutate(sales_vpy = actual_sales - actual_sales_PY,
+           org_vpy = actual_sales - actual_sales_PY - actual_salesfx - actual_salesacqdiv) %>% 
+  
+  # VFcst
+  mutate(sales_vfcst = actual_sales - fcst_sales_qr,
+         price_vfcst = actual_price - fcst_price,
+         vol_vfcst   = sales_vfcst  - actual_salesfxvqr - price_vfcst - fcst_salesacqdiv,
+         org_vfcst   = vol_vfcst + price_vfcst) %>% 
+
+  # VOP
+  mutate(sales_vop  = actual_sales - op_sales,
+         price_vop  = actual_price - op_price,
+         vol_vop    = sales_vop    - actual_salesfxvop - price_vop - op_salesacqdiv, #AO86-AQ86-AY86-AS86
+         org_vop    = vol_vop + price_vop) %>% 
+
+  # ///////////////////////////
+  
+  # organization
   select(observation,period,product,region,region_channel,
+         
          actual_sales,fcst_sales_qr,op_sales,actual_sales_PY,
          actual_sales_2PY,fcst_price,op_price,fcst_salesvol,op_salesvol,
-         actual_salesfx,actual_salesacqdiv,actual_salesvol,actual_price,
-         actual_salesfxvqr,fcst_salesacqdiv,actual_salesfxvop,op_salesacqdiv)
+         
+         #VPY
+         sales_vpy, salesfx_vpy = actual_salesfx, salesacqdiv_vpy = actual_salesacqdiv,
+         org_vpy, salesvol_vpy = actual_salesvol, price_vpy = actual_price,
+         
+         #VQR
+         sales_vfcst, salesfx_vfcst = actual_salesfxvqr, salesacqdiv_vfcst = fcst_salesacqdiv,
+         org_vfcst, salesvol_vfcst = vol_vfcst, price_vfcst,
+         
+         #VOP
+         sales_vop, salesfx_vop = actual_salesfxvop, salesacqdiv_vop = op_salesacqdiv,
+         org_vop, salesvol_vop = vol_vop, price_vop)
+  
+  return(grouped_ns)
+
+}
+
+  
 
 
-    # After getting the results from BAR, calculate Others. where:
-    # Total Prod - PTG - HTAS == Other. 
+# Ratios Tooltip ----------------------------------------------------------
+
+# Must Tie Out, Should Organics, Volume and Price be formulated the same way 
+# in HTAS as it is Total Product and PTG. 
+# If we understood PTG as the Total Basket why shoul the elements of the basket 
+# follow different rules than the benchmark? The sub of the BUs organics should 
+# be equivalent to the Total Org. 
+
+# -161.528217131219
 
 
-    # ns_structure %>% 
-    #   select(region_channel, type,
-    #          region, product, result,ref_date) %>% 
-    #   relocate(.after = product, ref_date)
+# Create table to replicate the ratios at percentage and Bps on the Original V.
+# Table should have same structure and contain 18 ratios for VPY, VFcast & VOP.
+# Design view for main table and tooltip to hover. 
+
+
