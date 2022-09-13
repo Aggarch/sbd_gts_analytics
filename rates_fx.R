@@ -275,7 +275,7 @@ psum <- read.xlsx("pivot_summ_june_close.xlsx") %>% as_tibble() %>%
         janitor::clean_names() %>% 
         select(month,scenario,entity,business,
                region,market_1,lc,pnl_rates,transactional_fx) %>% 
-        filter(grepl("ACTUAL_POST",scenario)) %>% 
+        filter(grepl("ACTUAL",scenario)) %>% 
   filter(!grepl("OPG",region)) %>% 
   filter(!grepl("DORMANT",region)) %>% 
   filter(entity != "[none]") %>% 
@@ -317,8 +317,8 @@ psum_no_lag <- psum_wider %>%
   relocate(.after = Apr, Apr_Pnl_Rates) %>% 
   relocate(.after = May, May_Pnl_Rates) %>% 
   relocate(.after = Jun, Jun_Pnl_Rates) %>% 
-  relocate(.after = Jul, Jul_Pnl_Rates)
-
+  relocate(.after = Jul, Jul_Pnl_Rates) %>% 
+  relocate(.after = Aug, Aug_Pnl_Rates)
 
 
 # psum_no_lag %>% openxlsx::write.xlsx(.,"pivot_summ_transf.xlsx")
@@ -328,7 +328,9 @@ psum_no_lag <- psum_wider %>%
 vect_math <- read.xlsx("pivot_summ_transf.xlsx", sheet = "Dist") %>% as_tibble()
 
 
-fx_factor_ocos <- read.xlsx("fx_factor_ocos.xlsx") %>% as_tibble() %>% 
+# FACTORS ------------------------------------------------------------------
+
+fx_factor_ocos <- read.xlsx("fx_factor_sgm.xlsx") %>% as_tibble() %>% 
   filter(region_market %in% vect_math$Reg) %>% 
   rename(business_market = region_market) %>% 
   rename_at(vars(-business_market), ~ paste0(., '_ocos_dist'))
@@ -347,6 +349,8 @@ transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>%
   unite("May_ocos_dist",May_ocos_dist.x,May_ocos_dist.y) %>% 
   unite("Jun_ocos_dist",Jun_ocos_dist.x,Jun_ocos_dist.y) %>% 
   unite("Jul_ocos_dist",Jul_ocos_dist.x,Jul_ocos_dist.y) %>% 
+  unite("Aug_ocos_dist",Aug_ocos_dist.x,Aug_ocos_dist.y) %>% 
+  
   
 
   mutate(Jan_ocos_dist = str_replace_all(Jan_ocos_dist,"NA_","")) %>% 
@@ -370,13 +374,18 @@ transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>%
   mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"NA_","")) %>% 
   mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"_NA","")) %>% 
   
+  mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"NA_","")) %>% 
+  mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"_NA","")) %>% 
+  
     separate(Jan_ocos_dist, c("Jan_ocos_dist", "b"), "_") %>%
     separate(Feb_ocos_dist, c("Feb_ocos_dist", "b"), "_") %>%
     separate(Mar_ocos_dist, c("Mar_ocos_dist", "b"), "_") %>%
     separate(Apr_ocos_dist, c("Apr_ocos_dist", "b"), "_") %>%
     separate(May_ocos_dist, c("May_ocos_dist", "b"), "_") %>%
     separate(Jun_ocos_dist, c("Jun_ocos_dist", "b"), "_") %>% 
-    separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_")  
+    separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_") %>% 
+    separate(Aug_ocos_dist, c("Aug_ocos_dist", "b"), "_")  
+
     
    
 TransFX_OCOS_YTD <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") %>% 
@@ -386,7 +395,9 @@ TransFX_OCOS_YTD <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") 
   relocate(.after = Apr, Apr_ocos_dist) %>% 
   relocate(.after = May, May_ocos_dist) %>% 
   relocate(.after = Jun, Jun_ocos_dist) %>% 
-  relocate(.after = Jul, Jul_ocos_dist)  
+  relocate(.after = Jul, Jul_ocos_dist) %>% 
+  relocate(.after = Aug, Aug_ocos_dist)  
+
 
 
 
@@ -396,27 +407,52 @@ return(TransFX_OCOS_YTD)
 
 TransFX_OCOS_YTD <- transFX()
 
+
+
+# SGM Transactional -------------------------------------------------------
+
+# Change the Factor table to be SGM distribution.
+
+TransFX_OCOS_YTD %>% select(!contains(".x")) %>% select(!contains(".y")) %>% 
+  select(entity, business, region, market_1, lc, contains("Aug")) %>% 
+  mutate(Aug_ocos_dist = as.numeric(Aug_ocos_dist)) %>% 
+  mutate(a = Aug * Aug_ocos_dist) %>% 
+  filter(a != 0) %>% 
+  mutate(b = Aug_Pnl_Rates * a) -> ttt
+
+sgm_transact <- ttt %>% select(entity,a)
+
+
+
+
 setwd(model)
-TransFX_OCOS_YTD %>%  openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_JULY") 
+TransFX_OCOS_YTD %>%  openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_AUG.xlsx") 
   
 
 
 # LH INP01 Template BAR Upload  -------------------------------------------
 
+# Calculate measures.
 
-TransFX_OCOS_YTD <- openxlsx::read.xlsx("TransFX_OCOS_YTD_LC_REPORTED_JULY.xlsx",sheet = "LC_JULY") %>% 
-  select(entity, OCOS_TRANSFX_LC_JUL)
+TransFX_OCOS_YTD <- openxlsx::read.xlsx("Transactional_OCOS_FX/TransFX_OCOS_YTD_AUG.xlsx",sheet = "data") %>% 
+  select(entity, OCOS_TRANSFX_LC_AUG)
 
 
 OCOS_Transactional_FX_INP01 <- openxlsx::read.xlsx("OCOS_Transactional_FX_INP01.xlsx") %>% 
   select(LocalCur) %>% mutate(entity = str_replace_all(LocalCur,"<<",""))
 
-# For Laura Hamblin template /// 
+# For Laura Hamblin template /// OCOS Transactional
 LH_del <- OCOS_Transactional_FX_INP01 %>% 
   left_join(TransFX_OCOS_YTD, by = "entity") %>% 
   mutate_all(funs(replace(., is.na(.), 0)))
 
-LH_del %>% openxlsx::write.xlsx(.,"LH_del.xlsx")
+
+# For Laura Hamblin template /// SGM Transactional
+LH_del <- OCOS_Transactional_FX_INP01 %>% 
+  left_join(sgm_transact, by = "entity") %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
+LH_del %>% openxlsx::write.xlsx(.,"Transactional_OCOS_FX/LH_del.xlsx", overwrite = T)
 
 # On template not on data pull 
 OCOS_Transactional_FX_INP01 %>% anti_join(TransFX_OCOS_YTD, by = "entity")

@@ -137,11 +137,17 @@ nsales <- function(){
 
 # BAR Pull Results Wider --------------------------------------------------
 
+netsales_data  <- "C:/Users/AEG1130/Documents/Net Sales/PBI"
+setwd(netsales_data)
+
+prior <- openxlsx::read.xlsx("raw_ns.xlsx", sheet = "priority") %>% 
+  as_tibble()
 
 netsales <- openxlsx::read.xlsx("raw_ns.xlsx") %>% 
   as_tibble() %>% 
   mutate(result = ifelse(is.na(result),0,result)) 
-
+  # left_join(prior, by = "region_channel") %>% 
+  # relocate(.before = region_channel, priority)
 
 
 
@@ -153,9 +159,9 @@ grouped_ns <- netsales %>%
   mutate(region_channel = ifelse(product == "PTG" & region_channel == "Tools", "PTG", region_channel)) %>% 
   mutate(region_channel = ifelse(product == "Other" & region_channel == "Tools", "Other", region_channel)) %>% 
   
- group_by(observation, 
+ group_by(observation, ref_date,quarter,
            period, product, region,
-           region_channel, type) %>% 
+           region_channel, type, priority) %>% 
   summarise(result = sum(result),.groups = "drop") %>% 
   pivot_wider(names_from = type, values_from = result) %>% 
   
@@ -183,7 +189,7 @@ grouped_ns <- netsales %>%
   # ///////////////////////////
   
   # organization
-  select(observation,period,product,region,region_channel,
+  select(priority,ref_date,quarter,observation,period,product,region,region_channel,
          
          actual_sales,fcst_sales_qr,op_sales,actual_sales_PY,
          actual_sales_2PY,fcst_price,op_price,fcst_salesvol,op_salesvol,
@@ -203,6 +209,7 @@ grouped_ns <- netsales %>%
   return(grouped_ns)
 
 }
+
 
   
 
