@@ -328,7 +328,11 @@ psum_no_lag <- psum_wider %>%
 vect_math <- read.xlsx("pivot_summ_transf.xlsx", sheet = "Dist") %>% as_tibble()
 
 
-# FACTORS ------------------------------------------------------------------
+# FACTORS ------------------------------------------------------------------ !!!!!!
+
+
+# Please see that factors being used are SGM Ones
+
 
 fx_factor_ocos <- read.xlsx("fx_factor_sgm.xlsx") %>% as_tibble() %>% 
   filter(region_market %in% vect_math$Reg) %>% 
@@ -411,6 +415,7 @@ TransFX_OCOS_YTD <- transFX()
 
 # SGM Transactional -------------------------------------------------------
 
+# Test this to be able reproduce analysis. 
 # Change the Factor table to be SGM distribution.
 
 TransFX_OCOS_YTD %>% select(!contains(".x")) %>% select(!contains(".y")) %>% 
@@ -423,11 +428,28 @@ TransFX_OCOS_YTD %>% select(!contains(".x")) %>% select(!contains(".y")) %>%
 sgm_transact <- ttt %>% select(entity,a)
 
 
-
-
 setwd(model)
 TransFX_OCOS_YTD %>%  openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_AUG.xlsx") 
   
+
+
+# SGM_Transactional FX Forecasted -----------------------------------------
+
+TransFX_OCOS_YTD_F07 %>% select(!contains(".x")) %>% select(!contains(".y")) %>% 
+#  select(!contains("Jul")) %>% select(!contains("Aug")) %>% 
+  filter(Sep_ocos_dist !=0)->ttt
+  # select(entity, business, region, market_1, lc, contains("Aug")) %>% 
+  # mutate(Aug_ocos_dist = as.numeric(Aug_ocos_dist)) %>% 
+  # mutate(a = Aug * Aug_ocos_dist) %>% 
+  # filter(a != 0) %>% 
+  # mutate(b = Aug_Pnl_Rates * a) -> ttt
+
+sgm_transact <- ttt %>% select(entity,a)
+
+
+setwd(model)
+ttt %>%  openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_AUG_FCST.xlsx", overwrite = T) 
+
 
 
 # LH INP01 Template BAR Upload  -------------------------------------------
@@ -510,9 +532,10 @@ remove_lag = c("CCA incl PR","Colombia","Argentina Commercial",
 
 psum <- read.xlsx("pivot_summ_f07_close.xlsx") %>% as_tibble() %>% 
   janitor::clean_names() %>% 
-  select(month,scenario,entity,business,
-         region,market_1,lc,pnl_rates,transactional_fx) %>% 
-  filter(grepl("CFCST",scenario)) %>% 
+   # select(month,scenario,entity,
+   #        business,
+   #        region,market_1,lc,pnl_rates,transactional_fx) %>% 
+  filter(grepl("FCS",scenario)) %>% 
   filter(!grepl("OPG",region)) %>% 
   filter(!grepl("DORMANT",region)) %>% 
   filter(entity != "[none]") %>% 
@@ -548,8 +571,6 @@ psum_no_lag <- psum_wider %>%
   #filter(!market_1 %in% remove_lag)
   mutate(LAG_ex = ifelse(market_1 %in% remove_lag, "yes", "no")) %>% 
   left_join(pnl_rates, by = "lc") %>% 
-  relocate(.after = Jul, Jul_Pnl_Rates) %>% 
-  relocate(.after = Aug, Aug_Pnl_Rates) %>% 
   relocate(.after = Sep, Sep_Pnl_Rates) %>% 
   relocate(.after = Oct, Oct_Pnl_Rates) %>% 
   relocate(.after = Nov, Nov_Pnl_Rates) %>% 
@@ -563,11 +584,11 @@ psum_no_lag <- psum_wider %>%
 vect_math <- read.xlsx("pivot_summ_transf.xlsx", sheet = "Dist") %>% as_tibble()
 
 
-fx_factor_ocos <- read.xlsx("fx_factor_ocos.xlsx") %>% as_tibble() %>% 
+fx_factor_ocos <- read.xlsx("fx_factor_sgm.xlsx") %>% as_tibble() %>% 
   filter(region_market %in% vect_math$Reg) %>% 
   rename(business_market = region_market) %>% 
   rename_at(vars(-business_market), ~ paste0(., '_ocos_dist')) %>% 
-  select(business_market,contains(c("Jul","Aug","Sep","Oct","Nov","Dec")))
+  select(business_market,contains(c("Sep","Oct","Nov","Dec")))
 
 transFX_ocos <- psum_no_lag %>%
   left_join(fx_factor_ocos, by = c("business" = "business_market")) %>% 
@@ -576,18 +597,17 @@ transFX_ocos <- psum_no_lag %>%
 transFX <- function(){ 
   
   transFX_ocos_dist <- transFX_ocos %>% select(entity, contains("ocos_dist")) %>% 
-    unite("Jul_ocos_dist",Jul_ocos_dist.x,Jul_ocos_dist.y) %>% 
-    unite("Aug_ocos_dist",Aug_ocos_dist.x,Aug_ocos_dist.y) %>%  
+#    unite("Aug_ocos_dist",Aug_ocos_dist.x,Aug_ocos_dist.y) %>%  
     unite("Sep_ocos_dist",Sep_ocos_dist.x,Sep_ocos_dist.y) %>% 
     unite("Oct_ocos_dist",Oct_ocos_dist.x,Oct_ocos_dist.y) %>% 
     unite("Nov_ocos_dist",Nov_ocos_dist.x,Nov_ocos_dist.y) %>% 
     unite("Dec_ocos_dist",Dec_ocos_dist.x,Dec_ocos_dist.y) %>% 
     
-    mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"NA_","")) %>% 
-    mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"_NA","")) %>% 
+#   mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"NA_","")) %>% 
+#   mutate(Jul_ocos_dist = str_replace_all(Jul_ocos_dist,"_NA","")) %>% 
     
-    mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"NA_","")) %>% 
-    mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"_NA","")) %>% 
+#   mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"NA_","")) %>% 
+#   mutate(Aug_ocos_dist = str_replace_all(Aug_ocos_dist,"_NA","")) %>% 
     
     mutate(Sep_ocos_dist = str_replace_all(Sep_ocos_dist,"NA_","")) %>% 
     mutate(Sep_ocos_dist = str_replace_all(Sep_ocos_dist,"_NA","")) %>% 
@@ -602,8 +622,8 @@ transFX <- function(){
     mutate(Dec_ocos_dist = str_replace_all(Dec_ocos_dist,"_NA","")) %>% 
     
     
-    separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_") %>%
-    separate(Aug_ocos_dist, c("Aug_ocos_dist", "b"), "_") %>%
+#   separate(Jul_ocos_dist, c("Jul_ocos_dist", "b"), "_") %>%
+#   separate(Aug_ocos_dist, c("Aug_ocos_dist", "b"), "_") %>%
     separate(Sep_ocos_dist, c("Sep_ocos_dist", "b"), "_") %>%
     separate(Oct_ocos_dist, c("Oct_ocos_dist", "b"), "_") %>%
     separate(Nov_ocos_dist, c("Nov_ocos_dist", "b"), "_") %>%
@@ -613,19 +633,19 @@ transFX <- function(){
   
   
   TransFX_OCOS_YTD_F07 <- psum_no_lag %>% left_join(transFX_ocos_dist, by = "entity") %>% 
-    relocate(.after = Jul, Jul_ocos_dist) %>% 
-    relocate(.after = Aug, Aug_ocos_dist) %>% 
+#   relocate(.after = Jul, Jul_ocos_dist) %>% 
+#   relocate(.after = Aug, Aug_ocos_dist) %>% 
     relocate(.after = Sep, Sep_ocos_dist) %>% 
     relocate(.after = Oct, Oct_ocos_dist) %>% 
     relocate(.after = Nov, Nov_ocos_dist) %>% 
     relocate(.after = Dec, Dec_ocos_dist)  
   
   
-  retun(TransFX_OCOS_YTD_F07)
+  return(TransFX_OCOS_YTD_F07)
   
 }
 
 TransFX_OCOS_YTD_F07 <- transFX()
 
 
-TransFX_OCOS_YTD_F07 %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_F07.xlsx")
+TransFX_OCOS_YTD_F07 %>% openxlsx::write.xlsx(.,"TransFX_OCOS_YTD_F07.xlsx", overwrite = T)

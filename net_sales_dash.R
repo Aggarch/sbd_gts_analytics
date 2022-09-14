@@ -70,6 +70,7 @@ fill.prd <- function(prd){
 
 
 # Recursive Scale RAW ---------------------------------------------------------
+# Output to be BAR Refreshed 
 
 nsales <- function(){ 
   
@@ -140,6 +141,7 @@ nsales <- function(){
 netsales_data  <- "C:/Users/AEG1130/Documents/Net Sales/PBI"
 setwd(netsales_data)
 
+# Enable the prioritization with doubles
 prior <- openxlsx::read.xlsx("raw_ns.xlsx", sheet = "priority") %>% 
   as_tibble()
 
@@ -148,9 +150,6 @@ netsales <- openxlsx::read.xlsx("raw_ns.xlsx") %>%
   mutate(result = ifelse(is.na(result),0,result)) 
   # left_join(prior, by = "region_channel") %>% 
   # relocate(.before = region_channel, priority)
-
-
-
 
 
 # Report Structured Embeed ------------------------------------------------
@@ -223,15 +222,30 @@ grouped_ns <- netsales %>%
 
 # Must Tie Out, Should Organics, Volume and Price be formulated the same way 
 # in HTAS as it is Total Product and PTG. 
-# If we understood PTG as the Total Basket why shoul the elements of the basket 
+# If we understood PTG as the Total Basket why should the elements of the basket 
 # follow different rules than the benchmark? The sub of the BUs organics should 
 # be equivalent to the Total Org. 
+
+# This formulated function do work for specifc months, however not for YTD 
+# Perspective, thats b/c being linear and not summing al vector before calcuating
+
+
+# This Rates XOR Kpis table do works at least for salesvpyratio, do works for 
+# VFcst and VOP, If that-s the case an additional date-wise function needed.
+
+# Organics Measure example 
+# organics_dynamic = ((SUM(summary[sales_actual_mtd])-SUM(summary[sales_PY_mtd])-
+#                      SUM(summary[sales_fx_mtd])-SUM(summary[sales_acqdiv_mtd])) /
+#                      SUM(summary[sales_PY_mtd] ))
+
+
+# Mirror the PBI grouped_ns table and create 
+
 
 
 kpis_table <- function(){ 
 
 ratios <- grouped_ns %>%
-  filter(observation == "2022", period == "July", product == "Total Product") %>% 
 
   # VPY Ratios
   mutate(sales_vpy_ratio        = sales_vpy/actual_sales_PY) %>% 
@@ -255,25 +269,60 @@ ratios <- grouped_ns %>%
   mutate(salesacqdiv_vop_ratio  = round(salesacqdiv_vpy_ratio  * 10000, -1)   - round(((salesacqdiv_vpy - salesacqdiv_vop)/actual_sales_PY)*10000,-1)) %>% 
   mutate(org_vop_ratio          = round(org_vpy_ratio  * 10000, -1)   - round(((org_vpy - org_vop)/actual_sales_PY)*10000,-1)) %>% 
   mutate(vol_vop_ratio          = round(vol_vpy_ratio  * 10000, -1)   - round(((salesvol_vpy - salesvol_vop)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(price_vop_ratio        = round((price_vpy_ratio)  * 10000, -1)   - round(((price_vpy-price_vop)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(sales_vfcst_ratio      = round(sales_vpy_ratio * 10000, -1) - round(((sales_vpy - sales_vfcst)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(fx_vfcst_ratio         = round(fx_vpy_ratio  * 10000, -1)   - round(((salesfx_vpy - salesfx_vfcst)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(salesacqdiv_vfcst_ratio= round(salesacqdiv_vpy_ratio  * 10000, -1)   - round(((salesacqdiv_vpy - salesacqdiv_vfcst)/fcst_sales_qr)*10000,-1)) %>% 
-  mutate(org_vfcst_ratio        = round(org_vpy_ratio  * 10000, -1)   - round(((org_vpy - org_vfcst)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(vol_vfcst_ratio        = round(vol_vpy_ratio  * 10000, -1)   - round(((salesvol_vpy - salesvol_vfcst)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(price_vfcst_ratio      = round(price_vpy_ratio  * 10000, -1)   - round((fcst_price/actual_sales_PY)*10000,-1)) 
- 
+  mutate(price_vop_ratio        = round((price_vpy_ratio)  * 10000, -1)   - round(((price_vpy-price_vop)/actual_sales_PY)*10000,-1)) 
 
 ratios[is.na(ratios)] <- 0  
 
 ratios_table <- ratios %>% 
 arrange(priority) %>% 
-  select(priority,region_channel, observation, 
-         period, product, contains("ratio")
+  select(priority,region_channel,
+         observation, period, ref_date, quarter,
+         product, contains("ratio")
          )
 
 return(ratios_table)
 
+}
+
+
+
+
+# Summarized KPis ---------------------------------------------------------
+
+
+
+summarized_kpis <- function(){ 
+  
+  table <-  grouped_ns %>% 
+    filter(product == "Total Product", observation == 2022) %>% 
+    filter(period %in% c("January","February", "March", "April", "May","June","July")) %>% 
+    group_by(priority, region_channel) %>% 
+    summarise(sales_vpy = sum(sales_vpy),
+              sales_vfcst = sum(sales_vfcst),
+              actual_sales_PY = sum(actual_sales_PY)) %>% 
+    mutate(sales_vpy_ratio        = sales_vpy/actual_sales_PY) %>% 
+    mutate(sales_vfcst_ratio      = round(sales_vpy_ratio * 10000, -1) - round(((sales_vpy - sales_vfcst)/actual_sales_PY)*10000,-1))
+    
+  
+  return(table)
+  
+}
+
+
+summarized_kpis <- function(){ 
+  
+  table <-  grouped_ns %>% 
+    filter(product == "Total Product", observation == 2022) %>% 
+    filter(period %in% c("January","February", "March", "April", "May","June","July")) %>% 
+    group_by(priority, region_channel) %>% 
+    summarise(sales_vpy = sum(sales_vpy),
+              actual_sales_PY = sum(actual_sales_PY),
+              
+              .groups = "drop") %>% 
+    mutate(sales_vpy_ratio        = sales_vpy/actual_sales_PY) 
+  
+  return(table)
+  
 }
 
 
