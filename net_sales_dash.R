@@ -69,7 +69,7 @@ fill.prd <- function(prd){
 
 
 
-# Recursive Scale ---------------------------------------------------------
+# Recursive Scale RAW ---------------------------------------------------------
 
 nsales <- function(){ 
   
@@ -151,6 +151,11 @@ netsales <- openxlsx::read.xlsx("raw_ns.xlsx") %>%
 
 
 
+
+
+# Report Structured Embeed ------------------------------------------------
+# grouped_ns resides here Wider Pivot mimics report originals : 
+
 net_sales_ingest <- function(){ 
   
 grouped_ns <- netsales %>% 
@@ -223,6 +228,8 @@ grouped_ns <- netsales %>%
 # be equivalent to the Total Org. 
 
 
+kpis_table <- function(){ 
+
 ratios <- grouped_ns %>%
   filter(observation == "2022", period == "July", product == "Total Product") %>% 
 
@@ -234,53 +241,40 @@ ratios <- grouped_ns %>%
   mutate(vol_vpy_ratio          = salesvol_vpy/actual_sales_PY) %>% 
   mutate(price_vpy_ratio        = price_vpy/actual_sales_PY) %>% 
 
- 
   # VFcst Ratios
-  
-  mutate(sales_vfcst_ratio        = sales_vfcst/actual_sales_PY) %>% 
-  mutate(fx_vfcst_ratio           = salesfx_vfcst/actual_sales_PY) %>% 
-  mutate(salesacqdiv_vfcst_ratio  = salesacqdiv_vfcst/actual_sales_PY) %>% 
-  mutate(org_vfcst_ratio          = org_vfcst/actual_sales_PY) %>% 
-  mutate(vol_vfcst_ratio          = salesvol_vfcst/actual_sales_PY) %>% 
-  mutate(price_vfcst_ratio        = price_vfcst/actual_sales_PY) %>% 
-  
+  mutate(sales_vfcst_ratio      = round(sales_vpy_ratio * 10000, -1) - round(((sales_vpy - sales_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(fx_vfcst_ratio         = round(fx_vpy_ratio  * 10000, -1)   - round(((salesfx_vpy - salesfx_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(salesacqdiv_vfcst_ratio= round(salesacqdiv_vpy_ratio  * 10000, -1)   - round(((salesacqdiv_vpy - salesacqdiv_vfcst)/fcst_sales_qr)*10000,-1)) %>% 
+  mutate(org_vfcst_ratio        = round(org_vpy_ratio  * 10000, -1)   - round(((org_vpy - org_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(vol_vfcst_ratio        = round(vol_vpy_ratio  * 10000, -1)   - round(((salesvol_vpy - salesvol_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(price_vfcst_ratio      = round(price_vpy_ratio  * 10000, -1)   - round((fcst_price/actual_sales_PY)*10000,-1)) %>% 
   
   # VOP Ratios
-  
-  mutate(sales_vop_ratio        = sales_vop/actual_sales_PY) %>% 
-  mutate(fx_vop_ratio           = salesfx_vop/actual_sales_PY) %>% 
-  mutate(salesacqdiv_vop_ratio  = salesacqdiv_vop/actual_sales_PY) %>% 
-  mutate(org_vop_ratio          = org_vop/actual_sales_PY) %>% 
-  mutate(vol_vop_ratio          = salesvol_vop/actual_sales_PY) %>% 
-  mutate(price_vop_ratio        = price_vop/actual_sales_PY) %>% 
+  mutate(sales_vop_ratio        = round(sales_vpy_ratio * 10000, -1) - round(((sales_vpy - sales_vop)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(fx_vop_ratio           = round(fx_vpy_ratio  * 10000, -1)   - round(((salesfx_vpy - salesfx_vop)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(salesacqdiv_vop_ratio  = round(salesacqdiv_vpy_ratio  * 10000, -1)   - round(((salesacqdiv_vpy - salesacqdiv_vop)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(org_vop_ratio          = round(org_vpy_ratio  * 10000, -1)   - round(((org_vpy - org_vop)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(vol_vop_ratio          = round(vol_vpy_ratio  * 10000, -1)   - round(((salesvol_vpy - salesvol_vop)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(price_vop_ratio        = round((price_vpy_ratio)  * 10000, -1)   - round(((price_vpy-price_vop)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(sales_vfcst_ratio      = round(sales_vpy_ratio * 10000, -1) - round(((sales_vpy - sales_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(fx_vfcst_ratio         = round(fx_vpy_ratio  * 10000, -1)   - round(((salesfx_vpy - salesfx_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(salesacqdiv_vfcst_ratio= round(salesacqdiv_vpy_ratio  * 10000, -1)   - round(((salesacqdiv_vpy - salesacqdiv_vfcst)/fcst_sales_qr)*10000,-1)) %>% 
+  mutate(org_vfcst_ratio        = round(org_vpy_ratio  * 10000, -1)   - round(((org_vpy - org_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(vol_vfcst_ratio        = round(vol_vpy_ratio  * 10000, -1)   - round(((salesvol_vpy - salesvol_vfcst)/actual_sales_PY)*10000,-1)) %>% 
+  mutate(price_vfcst_ratio      = round(price_vpy_ratio  * 10000, -1)   - round((fcst_price/actual_sales_PY)*10000,-1)) 
+ 
 
-  
-  
-  
-  select(priority, region_channel, sales_vpy, sales_vpy_ratio, salesfx_vpy, 
-         fx_vpy_ratio, salesacqdiv_vpy,salesacqdiv_vpy_ratio,
-         org_vpy, org_vpy_ratio, salesvol_vpy, vol_vpy_ratio,
-         price_vpy, price_vpy_ratio) %>% 
-  arrange(priority)
+ratios[is.na(ratios)] <- 0  
 
+ratios_table <- ratios %>% 
+arrange(priority) %>% 
+  select(priority,region_channel, observation, 
+         period, product, contains("ratio")
+         )
 
+return(ratios_table)
 
-
-
-ratios %>% 
-  select(priority, region_channel, sales_vpy, 
-         sales_vpy_ratio, sales_vfcst, actual_sales_PY,
-         fx_vpy_ratio, salesfx_vpy, salesfx_vfcst,
-         salesacqdiv_vfcst, salesacqdiv_vpy, salesacqdiv_vpy_ratio,fcst_sales_qr) %>% 
-  mutate(sales_vfcst_ratio = round(sales_vpy_ratio * 10000, -1) - round(((sales_vpy - sales_vfcst)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(fx_vfcst_ratio    = round(fx_vpy_ratio  * 10000, -1)   - round(((salesfx_vpy - salesfx_vfcst)/actual_sales_PY)*10000,-1)) %>% 
-  mutate(salesacqdiv_vfcst_ratio    = round(salesacqdiv_vpy_ratio  * 10000, -1)   - round(((salesacqdiv_vpy - salesacqdiv_vfcst)/fcst_sales_qr)*10000,-1)) %>% 
-  arrange(priority) %>% print(n=Inf)
-
-
-
-# ttt[is.na(ttt)] <- 0  
-
+}
 
 
 # -161.528217131219
