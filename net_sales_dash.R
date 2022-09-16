@@ -142,14 +142,30 @@ netsales_data  <- "C:/Users/AEG1130/Documents/Net Sales/PBI"
 setwd(netsales_data)
 
 # Enable the prioritization with doubles
-prior <- openxlsx::read.xlsx("raw_ns.xlsx", sheet = "priority") %>% 
-  as_tibble()
+
+
+ prior <- openxlsx::read.xlsx("raw_ns.xlsx", sheet = "priority") %>% as_tibble()
+ p.order <- openxlsx::read.xlsx("raw_ns.xlsx", sheet = "p.order") %>% as_tibble()
+ r.order <- openxlsx::read.xlsx("raw_ns.xlsx", sheet = "r.order") %>% as_tibble()
+
 
 netsales <- openxlsx::read.xlsx("raw_ns.xlsx") %>% 
   as_tibble() %>% 
-  mutate(result = ifelse(is.na(result),0,result)) 
+  mutate(result = ifelse(is.na(result),0,result)) %>% 
+  mutate(region = ifelse(region_channel == "GTS HQ", "GTS HQ", region))%>%
+  mutate(region = ifelse(region_channel == "GTS HQ Hedge", "GTS HQ Hedge",region)) %>% 
+ 
   # left_join(prior, by = "region_channel") %>% 
-  # relocate(.before = region_channel, priority)
+  # relocate(.before = region_channel, priority) %>% 
+  
+  left_join(p.order, by = "product") %>%
+  relocate(.before = product, p.order) %>%
+
+  left_join(r.order, by = "region") %>%
+  relocate(.before = region, r.order)
+
+
+netsales %>% openxlsx::write.xlsx(.,"rw.p.xlsx", overwrite = T)
 
 
 # Report Structured Embeed ------------------------------------------------
@@ -161,11 +177,15 @@ grouped_ns <- netsales %>%
   
   mutate(region_channel = ifelse(product == "HTAS" & region_channel == "Tools", "HTAS", region_channel)) %>% 
   mutate(region_channel = ifelse(product == "PTG" & region_channel == "Tools", "PTG", region_channel)) %>% 
-  mutate(region_channel = ifelse(product == "Other" & region_channel == "Tools", "Other", region_channel)) %>% 
+  mutate(region_channel = ifelse(product == "Other" & region_channel == "Tools", "Outdoor", region_channel)) %>% 
+  
+  mutate(region = ifelse(region_channel == "GTS HQ", "GTS HQ", region))%>%
+  mutate(region = ifelse(region_channel == "GTS HQ Hedge", "GTS HQ Hedge",region)) %>% 
+
   
  group_by(observation, ref_date,quarter,
            period, product, region,
-           region_channel, type, priority) %>% 
+           region_channel, type, priority, r.order,p.order) %>% 
   summarise(result = sum(result),.groups = "drop") %>% 
   pivot_wider(names_from = type, values_from = result) %>% 
   
@@ -193,7 +213,9 @@ grouped_ns <- netsales %>%
   # ///////////////////////////
   
   # organization
-  select(priority,ref_date,quarter,observation,period,product,region,region_channel,
+  select(priority,p.order,r.order,
+         ref_date,quarter,observation,period,
+         product,region,region_channel,
          
          actual_sales,fcst_sales_qr,op_sales,actual_sales_PY,
          actual_sales_2PY,fcst_price,op_price,fcst_salesvol,op_salesvol,
