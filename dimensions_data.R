@@ -13,6 +13,7 @@ setwd(dimensions)
 # Dimensions Do Change MoM. 
 
 
+# List resources to open 
  resources <- list.files() %>%
   as_tibble() %>% 
   mutate(key = str_replace_all(value, ".xlsx","")) %>% 
@@ -26,6 +27,7 @@ setwd(dimensions)
  
 dimens <- function(value, key, sheet){ 
 
+# Read List of resources   
 data <- openxlsx::read.xlsx(value,sheet) %>% 
   as_tibble() %>% 
   mutate(dimension = key) %>%
@@ -48,6 +50,7 @@ return(data)
 
 }
 
+# Iterate function to create table. 
 tables <- resources %>% pmap(dimens) %>% 
           map_dfr(.,bind_rows) %>% 
   select(-pln_member_type, -base)
@@ -312,14 +315,8 @@ Entities <- function(){
  
   
   
-# Questions: 
+# Notes: 
 
-  #  Why do ANY of the P&L accounts for the PNL FX do match with BAR TRACKER?
-  #  Why can queries easily be match with P&L BAR TRACKER but just FX report 
-  #  Do not ties out? / If Volume is not reliable what about rates?  
-  #  Where is the Entity List construct on the FX Report coming from? 
-  
-  
   #  All regions instead of NA available on column x4, NA ~ x3,
   #  Columns facilitate the data classification for a Dynamic Queries. 
   #  Dimensions Data hosted on SharePoint, How to make it more accessible? 
