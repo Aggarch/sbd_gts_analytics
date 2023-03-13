@@ -65,7 +65,7 @@ n.entities <- function(){
   entities_EMEA <- function(){  
     
     # GTS Total Tools + OPG  
-    gts_EMEA <- reg_all %>% filter(grepl("GTS_EMEANZ_REG_ALL", x5)) %>% 
+    gts_EMEA <- data %>% filter(grepl("GTS_EMEANZ_REG_ALL", x5)) %>% 
       # filter(grepl("_MKT_ALL", x8)) %>% 
       mutate(region  = "EMEA ANZ") %>% 
       rename(sub_region = x7) %>% 

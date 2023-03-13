@@ -611,7 +611,7 @@ return(list(NAm   = NAm,
 }
   
 Ent_all <- Entities() %>% 
-    map_dfr(.,bind_rows) %>% 
+  map_dfr(.,bind_rows) %>% 
   as_tibble() %>% 
   mutate(region = ifelse(is.na(region),"NA",region)) %>% 
   mutate(region =  case_when(region == "NA"~"North America",
