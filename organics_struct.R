@@ -20,50 +20,6 @@ organics_data         <- "C:/Users/AEG1130/Documents/organics/"
 setwd(organics_data)
 
 
-
-##########################################################################
-
-
-organics_data         <- "C:/Users/AEG1130/Documents/Reconcilation"
-
-setwd(organics_data)
-
-data_global = read_csv("SBU_GLOBAL.csv")
-
-
-data = data_global %>% 
-  as_tibble %>% 
-  janitor::clean_names()
-
-
-# saveRDS(data, "data_global")
-
-
-global_sales = read_rds("data_global")
-
-
-global_sales
-
-cols = global_sales %>% colnames %>%  as_tibble()
-
-
-##########################################################################
-
-
-data_global_billing = read_csv("SBU_GLOBAL_BILLING.csv")
-
-
-data_billing = data_global_billing %>% 
-  as_tibble %>% 
-  janitor::clean_names()
-
-
-#saveRDS(data_billing, "data_global_billing")
-
-global_billing = read_rds("data_global_billing")
-
-
-
 ##########################################################################
 
 
